@@ -1,9 +1,11 @@
+# SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+# SPDX-License-Identifier: MIT
 node_modules/
 bower_components/
 *.log
-
 build/
 dist/
 .idea/
 .old/
-.node_modules/
+src/*.js
+src/*.map
