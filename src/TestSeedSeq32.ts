@@ -1,7 +1,7 @@
-import {SeedSequence32} from "./SeedSequence32";
-
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
+
+import {SeedSequence32} from "./SeedSequence32";
 
 const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
 
@@ -12,8 +12,8 @@ function int32toBigInt(x: number): BigInt  {
     return ((BigInt(x >>> 1) << 1n) | lastBit);
 }
 
-let container = document.getElementById("container");
-if (container === null)  throw Error("Could not find the div element with ID 'container'");
+let container = document.getElementById("seq-test-result");
+if (container === null)  throw Error("Could not find the div element with ID 'seq-test-result'");
 
 const mySeedSequence: SeedSequence32 = new SeedSequence32(TEST_ENTROPY, new Int32Array(0), 4, 0);
 const seqs: SeedSequence32[] = mySeedSequence.spawn(3);

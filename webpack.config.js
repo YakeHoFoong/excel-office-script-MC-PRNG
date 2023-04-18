@@ -1,4 +1,7 @@
-// Generated using webpack-cli https://github.com/webpack/webpack-cli
+// SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+// SPDX-License-Identifier: MIT
+
+// Original generated using webpack-cli https://github.com/webpack/webpack-cli
 
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");

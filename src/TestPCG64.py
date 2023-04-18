@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+# SPDX-License-Identifier: MIT
+
 from numpy.random import Generator, PCG64DXSM, SeedSequence
 import numpy as np
 

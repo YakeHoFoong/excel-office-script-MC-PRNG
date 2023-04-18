@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+# SPDX-License-Identifier: MIT
+
 import numpy as np
 import numpy.version
 

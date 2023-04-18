@@ -1,9 +1,9 @@
-export { SeedSequence32 };
-
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-FileCopyrightText: (c) 2015 Melissa E. O'Neill
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
+
+export { SeedSequence32 };
 
 // This is a TypeScript port of almost all of the following part of the Numpy library:
 // https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx

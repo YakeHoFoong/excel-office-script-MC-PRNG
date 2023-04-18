@@ -1,8 +1,10 @@
 {
+  "SPDX-FileCopyrightText": "© 2023 Yake Ho Foong",
+  "SPDX-License-Identifier": "MIT",
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
-    //"module": "es6",
+    "module": "es6",
     "target": "es2020",
     // "allowJs": true,
     "lib": [

@@ -1,4 +1,6 @@
 {
+  "SPDX-FileCopyrightText": "© 2023 Yake Ho Foong",
+  "SPDX-License-Identifier": "MIT",
   "name": "my-webpack-project",
   "version": "1.0.0",
   "description": "My webpack project",
