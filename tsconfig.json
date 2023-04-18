@@ -6,10 +6,8 @@
     "noImplicitAny": true,
     "module": "es6",
     "target": "es2020",
-    // "allowJs": true,
     "lib": [
-      "es2020",
-      "dom"
+      "es2020"
     ],
     "sourceMap": true,
     "baseUrl": ".",
@@ -25,15 +23,18 @@
   "files": [
     "src/SeedSequence32.ts",
     "src/LongIntMaths.ts",
-    "src/TestSeedSeq32.ts",
-    "src/TestLongIntMaths.ts",
-    "src/TestAll.ts"
+    "test/SeedSequence32.spec.ts",
+    "test/LongIntMaths.spec.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "lib",
     "lib-amd"
+  ],
+  "include": [
+    "src/**/*",
+    "test/**/*"
   ]
 }
 

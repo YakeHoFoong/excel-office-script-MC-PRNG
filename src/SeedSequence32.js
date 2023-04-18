@@ -1,10 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SeedSequence32 = void 0;
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-FileCopyrightText: (c) 2015 Melissa E. O'Neill
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
+export { SeedSequence32 };
 // This is a TypeScript port of almost all of the following part of the Numpy library:
 // https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
 const DEFAULT_POOL_SIZE = 4;
@@ -129,5 +127,4 @@ class SeedSequence32 {
         return seqs;
     }
 }
-exports.SeedSequence32 = SeedSequence32;
 //# sourceMappingURL=SeedSequence32.js.map
