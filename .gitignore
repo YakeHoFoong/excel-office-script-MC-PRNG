@@ -8,4 +8,4 @@ dist/
 .idea/
 .old/
 src/*.js
-src/*.map
+src/*.js.map

@@ -22,7 +22,7 @@ function intArrToBigInt(arr: Int32Array): bigint  {
 // for printing during testing
 function bigIntToIntArr64(x: bigint): Int32Array  {
     const result: Int32Array = new Int32Array(4);
-    for (const i in result) {
+    for (let i: number = 0; i < 4; i++) {
         result[i] = Number(x & 0xFFFFn);
         x >>= 16n;
     }
@@ -60,7 +60,7 @@ function testLongMaths(): void {
     content = document.createElement("span");
     content.innerHTML = "Second mult number: " + testMul2.toString(16) + "<br>";
     container.appendChild(content);
-    result = (testMul1 * testMul2) % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFn;
+    result = (testMul1 * testMul2) % 0x100000000000000000000000000000000n;
     content = document.createElement("span");
     content.innerHTML = "Expected answer:<br>" + result.toString(16) + "<br>";
     container.appendChild(content);
