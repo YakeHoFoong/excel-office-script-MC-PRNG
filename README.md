@@ -12,7 +12,7 @@ A common issue when using Excel to perform Monte Carlo simulations (using the **
 There are third-party tools such as VBA code that implements the Mersenne Twister, but since Office on the Web is moving away from VBA and into Office Script for security reasons, I see this project as a useful tool to have for Monte Carlo simulations in Excel.
 
 # Final Goal
-My final goal is to write an add-in in Office Script and share it on Microsoft's AppSource so that anyone can easily get it and use it.
+My final goal is to write an add-in in Office Script (TypeScript) and share it on Microsoft's AppSource so that anyone can easily get it and use it.
 
 Online resource:
 https://learn.microsoft.com/en-us/office/dev/add-ins/develop/yeoman-generator-overview

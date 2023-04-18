@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": true,
+    //"module": "es6",
+    "target": "es2020",
+    // "allowJs": true,
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "sourceMap": true,
+    "baseUrl": ".",
+    "alwaysStrict": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true,
+    "strictFunctionTypes": true
+  },
+  "files": ["src/TestSeedSeq32.ts", "src/SeedSequence32.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "lib",
+    "lib-amd"
+  ]
+}
+
+
