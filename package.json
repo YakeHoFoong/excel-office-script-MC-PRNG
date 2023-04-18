@@ -13,7 +13,7 @@
     "build:prod": "webpack --mode=production --node-env=production",
     "watch": "webpack --watch",
     "serve": "webpack serve",
-    "test": "tsc && mocha test/**/*.spec.js",
+    "test": "tsc && mocha",
     "test:moc": "mocha"
   },
   "author": "Yake Ho Foong",
