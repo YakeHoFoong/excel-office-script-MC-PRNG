@@ -22,7 +22,13 @@
     "strict": true,
     "strictFunctionTypes": true
   },
-  "files": ["src/TestSeedSeq32.ts", "src/SeedSequence32.ts"],
+  "files": [
+    "src/SeedSequence32.ts",
+    "src/LongIntMaths.ts",
+    "src/TestSeedSeq32.ts",
+    "src/TestLongIntMaths.ts",
+    "src/TestAll.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

@@ -11,7 +11,7 @@ const isProduction = process.env.NODE_ENV == "production";
 const stylesHandler = "style-loader";
 
 const config = {
-  entry: "./src/TestSeedSeq32.ts",
+  entry: "./src/TestAll.ts",
   output: {
     path: path.resolve(__dirname, "dist"),
   },
