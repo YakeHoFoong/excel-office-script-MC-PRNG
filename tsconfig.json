@@ -24,7 +24,8 @@
     "src/SeedSequence32.ts",
     "src/LongIntMaths.ts",
     "test/SeedSequence32.spec.ts",
-    "test/LongIntMaths.spec.ts"
+    "test/LongIntMaths.spec.ts",
+    "test/BigintConversions.ts"
   ],
   "exclude": [
     "node_modules",

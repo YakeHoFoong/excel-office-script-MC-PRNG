@@ -1,18 +1,18 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
+
 import {
     SeedSequence32,
     ISeedSequence32Config,
     seedSequence32ConfigDefaults
 } from "../src/SeedSequence32.js";
+
+import {
+    int32toBigInt,
+} from "./BigintConversions.js";
+
 import { assert } from 'chai';
 import "mocha";
-function int32toBigInt(x: number): bigint {
-    // this is to deal with the rightmost bit being treated as a special sign bit
-    const lastBit: bigint = BigInt(x & 1);
-    return ((BigInt(x >>> 1) << 1n) | lastBit);
-}
-
 
 describe("Seed Sequence 32", function (): void {
     describe("Spawn children and generate state", function (): void {
