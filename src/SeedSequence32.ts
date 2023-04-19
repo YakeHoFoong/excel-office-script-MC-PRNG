@@ -3,7 +3,11 @@
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
 
-export { SeedSequence32 };
+export {
+    SeedSequence32,
+    ISeedSequence32Config,
+    seedSequence32ConfigDefaults
+};
 
 // This is a TypeScript port of almost all of the following part of the Numpy library:
 // https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
@@ -26,8 +30,8 @@ function mix(x: number, y: number): number {
 }
 
 class Cycle  {
-    arr: Int32Array;
-    index: number;
+    private arr: Int32Array;
+    private index: number;
     constructor(arr: Int32Array)  {
         this.arr = arr;
         this.index = -1 | 0;
@@ -43,7 +47,7 @@ class Cycle  {
 // create a class because the calculations for hash mix is stateful,
 // i.e., the hastConst
 class HashMix  {
-    hashConst: number;
+    private hashConst: number;
     constructor()  {
         const INIT_A: number = 0x43b0d7e5;
         this.hashConst = INIT_A | 0;
@@ -60,30 +64,44 @@ class HashMix  {
     }
 }
 
+interface ISeedSequence32Config  {
+    entropy: Int32Array,
+    spawnKey: Int32Array | [],
+    poolSize: number,
+    nChildrenSpawned: number
+}
+
+const seedSequence32ConfigDefaults:
+    Pick<ISeedSequence32Config,
+        'spawnKey' | 'poolSize' | 'nChildrenSpawned'> = {
+    spawnKey: [],
+    poolSize: DEFAULT_POOL_SIZE,
+    nChildrenSpawned: 0
+};
+
 class SeedSequence32 {
-    entropy: Int32Array;
-    spawnKey: Int32Array;
-    poolSize: number;
-    nChildrenSpawned: number;
-    pool: Int32Array;
-    constructor(entropy: Int32Array,
-                spawnKey: Int32Array,
-                poolSize: number,
-                nChildrenSpawned: number) {
-        if (entropy === null)
+    private entropy: Int32Array;
+    private spawnKey: Int32Array | [];
+    private poolSize: number;
+    private nChildrenSpawned: number;
+    private pool: Int32Array;
+    constructor(config: ISeedSequence32Config) {
+        this.entropy = config.entropy;
+        this.spawnKey = config.spawnKey;
+        this.poolSize = config.poolSize;
+        this.nChildrenSpawned = config.nChildrenSpawned;
+
+        if (this.entropy === null)
             throw new Error("entropy parameter cannot be null");
-        if (poolSize < DEFAULT_POOL_SIZE)
+        if (this.poolSize < DEFAULT_POOL_SIZE)
             throw new Error("poolSize argument cannot be smaller than "
                                 + DEFAULT_POOL_SIZE);
-        this.entropy = entropy;
-        this.spawnKey = spawnKey;
-        this.poolSize = poolSize;
-        this.nChildrenSpawned = nChildrenSpawned;
-        this.pool = new Int32Array(poolSize);
+
+        this.pool = new Int32Array(this.poolSize);
         this.mixEntropy(this.pool,
             this.getAssembledEntropy());
     }
-    mixEntropy(mixer: Int32Array, entropyArray: Int32Array): void {
+    private mixEntropy(mixer: Int32Array, entropyArray: Int32Array): void {
         let hashMix: HashMix = new HashMix();
 
         for (let i: number = 0 | 0; i < mixer.length; i++) {
@@ -112,10 +130,10 @@ class SeedSequence32 {
         }
     }
 
-    getAssembledEntropy(): Int32Array  {
+    private getAssembledEntropy(): Int32Array  {
         if (this.entropy === null)  throw Error("entropy cannot be null");
         const runEntropy: Int32Array = this.entropy;
-        const spawnEntropy: Int32Array = this.spawnKey;
+        const spawnEntropy: Int32Array | [] = this.spawnKey;
         // zero-fill or pad in the first case, see Numpy code comments
         const oldSize: number =
             (spawnEntropy.length > 0 && runEntropy.length < this.poolSize) ?
@@ -151,18 +169,19 @@ class SeedSequence32 {
 
         nChildren |= 0;
 
-        let seqs: SeedSequence32[] = [];
-        for (let i: number = this.nChildrenSpawned | 0; i < this.nChildrenSpawned + nChildren; i++)  {
-            const oldLen: number = this.spawnKey.length | 0;
-            const newSpawnKey: Int32Array = new Int32Array(oldLen + 1);
-            if (oldLen > 0)   newSpawnKey.set(this.spawnKey);
-            newSpawnKey[oldLen] = i;
-            seqs.push(new SeedSequence32(
-                this.entropy,
-                newSpawnKey,
-                this.poolSize,
-                this.nChildrenSpawned
-            ));
+        const oldLen: number = this.spawnKey.length | 0;
+        const newSpawnKey: Int32Array = new Int32Array(oldLen + 1);
+        if (oldLen > 0)   newSpawnKey.set(this.spawnKey);
+        let config: ISeedSequence32Config = {
+            entropy: this.entropy,
+            spawnKey: newSpawnKey,
+            poolSize: this.poolSize,
+            nChildrenSpawned: this.nChildrenSpawned
+        };
+        let seqs: SeedSequence32[] = Array(nChildren);
+        for (let i: number = 0 | 0; i < nChildren; i++)  {
+            config.spawnKey[oldLen] = (i + this.nChildrenSpawned) | 0;
+            seqs[i | 0] = new SeedSequence32(config);
         }
         this.nChildrenSpawned += nChildren | 0;
         return seqs;

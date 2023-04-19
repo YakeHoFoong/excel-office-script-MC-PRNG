@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
-import { SeedSequence32 } from "../src/SeedSequence32.js";
+import {
+    SeedSequence32,
+    ISeedSequence32Config,
+    seedSequence32ConfigDefaults
+} from "../src/SeedSequence32.js";
 import { assert } from 'chai';
 import "mocha";
 function int32toBigInt(x: number): bigint {
@@ -14,8 +18,11 @@ describe("Seed Sequence 32", function (): void {
     describe("Spawn children and generate state", function (): void {
         it("Spawn and generate Test 1", function (done): void {
             const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
-
-            const mySeedSequence: SeedSequence32 = new SeedSequence32(TEST_ENTROPY, new Int32Array(0), 4, 0);
+            const config: ISeedSequence32Config = {
+                ...seedSequence32ConfigDefaults,
+                entropy: TEST_ENTROPY
+            };
+            const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
             const seqs: SeedSequence32[] = mySeedSequence.spawn(3);
 
             const actualResults: bigint[][] = [];
