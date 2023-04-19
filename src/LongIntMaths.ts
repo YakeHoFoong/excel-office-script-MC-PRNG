@@ -4,12 +4,19 @@
 // a module to perform arithmetic for 128bit and 64bit integers
 // for the random number generator
 
-export { ModMultUint128Uint64, ModAdd128 };
+export {
+    InplaceModMult128x64,
+    InplaceModMult64x64,
+    InplaceModAdd128,
+    Inplace64RightShift32Xor,
+    Inplace64RightShift48Xor
+};
 
 // 128-bit (64-bit) integer is represented by 7 (4) 32-bit words,
 // but each is only filled with a 16-bit number, except for
 // the leftmost, which is a 32-bit number.
 
+// Result is returned in the first parameter
 // The algorithm below uses traditional long multiplication
 /*
     a7     a6   	 a5     a4    	a3     a2    	a1      a0
@@ -37,18 +44,17 @@ export { ModMultUint128Uint64, ModAdd128 };
 	            b3 x a2
      b3 x a34
 */
+function InplaceModMult128x64(
+            num128: Int32Array,
+            num64: Int32Array): void  {
 
-function ModMultUint128Uint64(num128: Int32Array,
-                              num64: Int32Array,
-                              product64: Int32Array): void  {
-
-    const Mask = 0xFFFF | 0;
-    let val;
-    let val1;
-    let val2;
+    const Mask: number = 0xFFFF | 0;
+    let val: number;
+    let val1: number;
+    let val2: number;
 
     val = Math.imul(num64[0] | 0, num128[0] | 0) | 0;
-    product64[0] = val & Mask;
+    let result0: number = val & Mask;
     val1 = val >>> 16;
 
     val = Math.imul(num64[0] | 0, num128[1] | 0) | 0;
@@ -57,8 +63,8 @@ function ModMultUint128Uint64(num128: Int32Array,
     val = Math.imul(num64[1] | 0, num128[0] | 0) | 0;
     val1 += val & Mask;
     val2 += val >>> 16;
-    product64[1] = val1 & Mask;
-    val1  = (val2 + (val1 >>> 16)) | 0;
+    let result1: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
 
     val = Math.imul(num64[0] | 0, num128[2] | 0) | 0;
     val1 += val & Mask;
@@ -69,8 +75,8 @@ function ModMultUint128Uint64(num128: Int32Array,
     val = Math.imul(num64[2] | 0, num128[0] | 0) | 0;
     val1 += val & Mask;
     val2 += val >>> 16;
-    product64[2] = val1 & Mask;
-    val1  = (val2 + (val1 >>> 16)) | 0;
+    let result2: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
 
     val = Math.imul(num64[0] | 0, num128[3] | 0) | 0;
     val1 += val & Mask;
@@ -84,8 +90,8 @@ function ModMultUint128Uint64(num128: Int32Array,
     val = Math.imul(num64[3] | 0, num128[0] | 0) | 0;
     val1 += val & Mask;
     val2 += val >>> 16;
-    product64[3] = val1 & Mask;
-    val1  = (val2 + (val1 >>> 16)) | 0;
+    let result3: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
 
     val = Math.imul(num64[0] | 0, num128[4] | 0) | 0;
     val1 += val & Mask;
@@ -99,8 +105,8 @@ function ModMultUint128Uint64(num128: Int32Array,
     val = Math.imul(num64[3] | 0, num128[1] | 0) | 0;
     val1 += val & Mask;
     val2 += val >>> 16;
-    product64[4] = val1 & Mask;
-    val1  = (val2 + (val1 >>> 16)) | 0;
+    let result4: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
 
     val = Math.imul(num64[0] | 0, num128[5] | 0) | 0;
     val1 += val & Mask;
@@ -114,11 +120,11 @@ function ModMultUint128Uint64(num128: Int32Array,
     val = Math.imul(num64[3] | 0, num128[2] | 0) | 0;
     val1 += val & Mask;
     val2 += val >>> 16;
-    product64[5] = val1 & Mask;
-    val1  = (val2 + (val1 >>> 16)) | 0;
+    let result5: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
 
     // leftmost, due to modulo, just let the product overflow
-    val = num128[6];  // special 32-bit word
+    val = num128[6] | 0;  // special 32-bit word
     val1 +=  Math.imul(num64[0] | 0, val | 0) | 0;
     val = (num128[6] << 16) | num128[5];
     val1 +=  Math.imul(num64[1] | 0, val | 0) | 0;
@@ -126,41 +132,122 @@ function ModMultUint128Uint64(num128: Int32Array,
     val1 +=  Math.imul(num64[2] | 0, val | 0) | 0;
     val = (num128[4] << 16) | num128[3];
     val1 +=  Math.imul(num64[3] | 0, val | 0) | 0;
-    product64[6] = val1;
+    num128[6] = val1 | 0;
+
+    // fill in the in place results
+    num128[0] = result0 | 0;
+    num128[1] = result1 | 0;
+    num128[2] = result2 | 0;
+    num128[3] = result3 | 0;
+    num128[4] = result4 | 0;
+    num128[5] = result5 | 0;
 
 }
 
-function ModAdd128(num1: Int32Array,
-                   num2: Int32Array,
-                   result: Int32Array): void  {
+// The algorithm below uses traditional long multiplication
+// Result is returned in the first parameter num1
+/*
+            a3     a2    	a1      a0
+	        b3     b2       b1      b0
+                              b0 x a0
+                      b0 x a1
+             b0 x a23
+                      b1 x a0
+             b1 x a12
+             b2 x a01
+             b3 x a0
+*/
+function InplaceModMult64x64(num1: Int32Array,
+                              num2: Int32Array): void  {
+
+    const Mask = 0xFFFF | 0;
+    let val;
+    let val1;
+    let val2;
+
+    val = Math.imul(num2[0] | 0, num1[0] | 0) | 0;
+    let result0: number = val & Mask;
+    val1 = val >>> 16;
+
+    val = Math.imul(num2[0] | 0, num1[1] | 0) | 0;
+    val1 += val & Mask;
+    val2 = val >>> 16;
+    val = Math.imul(num2[1] | 0, num1[0] | 0) | 0;
+    val1 += val & Mask;
+    val2 += val >>> 16;
+    let result1: number = val1 & Mask;
+    val1 = (val2 + (val1 >>> 16)) | 0;
+
+    // leftmost, due to modulo, just let the product overflow
+    val = (num1[3] << 16) | num1[2];
+    val1 +=  Math.imul(num2[0] | 0, val | 0) | 0;
+    val = (num1[2] << 16) | num1[1];
+    val1 +=  Math.imul(num2[1] | 0, val | 0) | 0;
+    val = (num1[1] << 16) | num1[0];
+    val1 +=  Math.imul(num2[2] | 0, val | 0) | 0;
+
+    let result2: number = val1 & Mask;
+    val1 >>>= 16;
+
+    // final one, special
+    val1 +=  Math.imul(num2[3] | 0, num1[0] | 0);
+
+    // in place results
+    num1[0] = result0 | 0;
+    num1[1] = result1 | 0;
+    num1[2] = result2 | 0;
+    num1[3] = val1 & Mask;
+
+}
+
+// result returned in first parameter
+function InplaceModAdd128(
+            num1: Int32Array,
+            num2: Int32Array): void  {
 
     const Mask: number = 0xFFFF | 0;
     let val: number = num1[0] + num2[0];
-    result[0] = val & Mask;
+    num1[0] = val & Mask;
 
     val >>>= 16;
     val += num1[1] + num2[1];
-    result[1] = val & Mask;
+    num1[1] = val & Mask;
 
     val >>>= 16;
     val += num1[2] + num2[2];
-    result[2] = val & Mask;
+    num1[2] = val & Mask;
 
     val >>>= 16;
     val += num1[3] + num2[3];
-    result[3] = val & Mask;
+    num1[3] = val & Mask;
 
     val >>>= 16;
     val += num1[4] + num2[4];
-    result[4] = val & Mask;
+    num1[4] = val & Mask;
 
     val >>>= 16;
     val += num1[5] + num2[5];
-    result[5] = val & Mask;
+    num1[5] = val & Mask;
 
     // last bit, just let it overflow
     val >>>= 16;
     val += num1[6] + num2[6];
-    result[6] = val;
+    num1[6] = val;
 
+}
+
+function Inplace64RightShift32Xor(num: Int32Array): void {
+    num[0] ^= num[2];
+    num[1] ^= num[3];
+    // ^=0 is the same as no op
+    // num[2] ^= 0;
+    // num[3] ^= 0;
+}
+
+function Inplace64RightShift48Xor(num: Int32Array): void {
+    num[0] ^= num[3];
+    // ^=0 is the same as no op
+    // num[1] ^= 0;
+    // num[2] ^= 0;
+    // num[3] ^= 0;
 }
