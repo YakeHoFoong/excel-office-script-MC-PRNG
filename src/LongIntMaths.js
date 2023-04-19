@@ -1,8 +1,52 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
-// a module to perform arithmetic for 128bit and 64bit integers
-// for the random number generator
-export { InplaceModMult128x64, InplaceModMult64x64, InplaceModAdd128, Inplace64RightShift32Xor, Inplace64RightShift48Xor };
+// This module contain functions that perform arithmetic
+// for 128bit and 64bit integers for the random number generators.
+// Currently only implemented those needed for the PCG64-DXSM generator.
+export { int32toBigInt, Uint, Uint64, Uint128, InplaceModMult128x64, InplaceModMult64x64, InplaceModAdd128, Inplace64RightShift32Xor, Inplace64RightShift48Xor };
+// mainly for testing
+function int32toBigInt(x) {
+    // this is to deal with the rightmost bit being treated as a special sign bit
+    const lastBit = BigInt(x & 1);
+    return ((BigInt(x >>> 1) << 1n) | lastBit);
+}
+class Uint {
+    constructor(numElems) {
+        this.values = new Int32Array(numElems);
+    }
+    // mainly used for testing only
+    fromBigint(x) {
+        const n = this.values.length;
+        for (let i = 0; i < n; i++) {
+            if (i === 6) {
+                // for Uint128, last entry is a 32-bit word
+                this.values[i] = Number(x);
+                break; // exit for
+            }
+            this.values[i] = Number(x & 0xffffn);
+            x >>= 16n;
+        }
+    }
+    // mainly used for testing only
+    toBigInt() {
+        let result = 0n;
+        const arr = this.values;
+        for (let i = 0; i < arr.length; i++) {
+            result |= int32toBigInt(arr[i]) << BigInt(16 * i);
+        }
+        return result;
+    }
+}
+class Uint64 extends Uint {
+    constructor() {
+        super(4);
+    }
+}
+class Uint128 extends Uint {
+    constructor() {
+        super(7);
+    }
+}
 // 128-bit (64-bit) integer is represented by 7 (4) 32-bit words,
 // but each is only filled with a 16-bit number, except for
 // the leftmost, which is a 32-bit number.
@@ -34,11 +78,13 @@ export { InplaceModMult128x64, InplaceModMult64x64, InplaceModAdd128, Inplace64R
                 b3 x a2
      b3 x a34
 */
-function InplaceModMult128x64(num128, num64) {
+function InplaceModMult128x64(int128, int64) {
     const Mask = 0xFFFF | 0;
     let val;
     let val1;
     let val2;
+    const num128 = int128.values;
+    const num64 = int64.values;
     val = Math.imul(num64[0] | 0, num128[0] | 0) | 0;
     let result0 = val & Mask;
     val1 = val >>> 16;
@@ -134,7 +180,9 @@ function InplaceModMult128x64(num128, num64) {
              b2 x a01
              b3 x a0
 */
-function InplaceModMult64x64(num1, num2) {
+function InplaceModMult64x64(int1, int2) {
+    const num1 = int1.values;
+    const num2 = int2.values;
     const Mask = 0xFFFF | 0;
     let val;
     let val1;
@@ -168,7 +216,9 @@ function InplaceModMult64x64(num1, num2) {
     num1[3] = val1 & Mask;
 }
 // result returned in first parameter
-function InplaceModAdd128(num1, num2) {
+function InplaceModAdd128(int1, int2) {
+    const num1 = int1.values;
+    const num2 = int2.values;
     const Mask = 0xFFFF | 0;
     let val = num1[0] + num2[0];
     num1[0] = val & Mask;
@@ -192,14 +242,16 @@ function InplaceModAdd128(num1, num2) {
     val += num1[6] + num2[6];
     num1[6] = val;
 }
-function Inplace64RightShift32Xor(num) {
+function Inplace64RightShift32Xor(int) {
+    const num = int.values;
     num[0] ^= num[2];
     num[1] ^= num[3];
     // ^=0 is the same as no op
     // num[2] ^= 0;
     // num[3] ^= 0;
 }
-function Inplace64RightShift48Xor(num) {
+function Inplace64RightShift48Xor(int) {
+    const num = int.values;
     num[0] ^= num[3];
     // ^=0 is the same as no op
     // num[1] ^= 0;

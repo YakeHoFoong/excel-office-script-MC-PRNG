@@ -9,7 +9,7 @@ import {
 
 import {
     int32toBigInt,
-} from "./BigintConversions.js";
+} from "../src/LongIntMaths.js";
 
 import { assert } from 'chai';
 import "mocha";

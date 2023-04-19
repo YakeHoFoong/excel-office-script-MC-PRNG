@@ -3,14 +3,15 @@
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
 
+// This is a TypeScript port of almost all of the contents
+// of the following part of the Numpy library:
+// https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
+
 export {
     SeedSequence32,
     ISeedSequence32Config,
     seedSequence32ConfigDefaults
 };
-
-// This is a TypeScript port of almost all of the following part of the Numpy library:
-// https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
 
 const DEFAULT_POOL_SIZE: number = 4;
 const XSHIFT: number = 16 | 0;
@@ -20,18 +21,16 @@ function mix(x: number, y: number): number {
     x |= 0;
     y |= 0;
 
-    let result: number =
+    const result: number =
         ((Math.imul( MIX_MULT_L, x) | 0)
         - (Math.imul(MIX_MULT_R, y) | 0)) | 0;
 
-    result ^= result >>> XSHIFT;
-
-    return result;
+    return result ^ (result >>> XSHIFT);
 }
 
 class Cycle  {
-    private arr: Int32Array;
     private index: number;
+    private readonly arr: Int32Array;
     constructor(arr: Int32Array)  {
         this.arr = arr;
         this.index = -1 | 0;
@@ -65,10 +64,10 @@ class HashMix  {
 }
 
 interface ISeedSequence32Config  {
-    entropy: Int32Array,
-    spawnKey: Int32Array | [],
-    poolSize: number,
-    nChildrenSpawned: number
+    readonly entropy: Int32Array,
+    readonly spawnKey: Int32Array | [],
+    readonly poolSize: number,
+    readonly nChildrenSpawned: number
 }
 
 const seedSequence32ConfigDefaults:
@@ -80,11 +79,11 @@ const seedSequence32ConfigDefaults:
 };
 
 class SeedSequence32 {
-    private entropy: Int32Array;
-    private spawnKey: Int32Array | [];
-    private poolSize: number;
+    private readonly entropy: Int32Array;
+    private readonly spawnKey: Int32Array | [];
+    private readonly poolSize: number;
     private nChildrenSpawned: number;
-    private pool: Int32Array;
+    private readonly pool: Int32Array;
     constructor(config: ISeedSequence32Config) {
         this.entropy = config.entropy;
         this.spawnKey = config.spawnKey;
@@ -102,7 +101,7 @@ class SeedSequence32 {
             this.getAssembledEntropy());
     }
     private mixEntropy(mixer: Int32Array, entropyArray: Int32Array): void {
-        let hashMix: HashMix = new HashMix();
+        const hashMix: HashMix = new HashMix();
 
         for (let i: number = 0 | 0; i < mixer.length; i++) {
             if (i < entropyArray.length)
@@ -139,7 +138,8 @@ class SeedSequence32 {
             (spawnEntropy.length > 0 && runEntropy.length < this.poolSize) ?
                 this.poolSize : runEntropy.length;
 
-        const entropyArray: Int32Array = new Int32Array(oldSize + spawnEntropy.length);
+        const entropyArray: Int32Array =
+            new Int32Array(oldSize + spawnEntropy.length);
         entropyArray.set(runEntropy);
         entropyArray.set(spawnEntropy, oldSize);
         return entropyArray;
@@ -151,8 +151,8 @@ class SeedSequence32 {
         const INIT_B: number = 0x8b51f9dd | 0;
         const MULT_B: number = 0x58f38ded | 0;
 
-        let state: Int32Array = new Int32Array(nWords);
-        let srcCycle: Cycle = new Cycle(this.pool);
+        const state: Int32Array = new Int32Array(nWords);
+        const srcCycle: Cycle = new Cycle(this.pool);
         let hashConst: number = INIT_B | 0;
         for (let iDst: number = 0 | 0; iDst < nWords; iDst++)  {
             let dataVal: number = srcCycle.next() | 0;
@@ -172,13 +172,13 @@ class SeedSequence32 {
         const oldLen: number = this.spawnKey.length | 0;
         const newSpawnKey: Int32Array = new Int32Array(oldLen + 1);
         if (oldLen > 0)   newSpawnKey.set(this.spawnKey);
-        let config: ISeedSequence32Config = {
+        const config: ISeedSequence32Config = {
             entropy: this.entropy,
             spawnKey: newSpawnKey,
             poolSize: this.poolSize,
             nChildrenSpawned: this.nChildrenSpawned
         };
-        let seqs: SeedSequence32[] = Array(nChildren);
+        const seqs: SeedSequence32[] = Array(nChildren);
         for (let i: number = 0 | 0; i < nChildren; i++)  {
             config.spawnKey[oldLen] = (i + this.nChildrenSpawned) | 0;
             seqs[i | 0] = new SeedSequence32(config);

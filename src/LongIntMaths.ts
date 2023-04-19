@@ -1,16 +1,71 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
 
-// a module to perform arithmetic for 128bit and 64bit integers
-// for the random number generator
+// This module contain functions that perform arithmetic
+// for 128bit and 64bit integers for the random number generators.
+// Currently only implemented those needed for the PCG64-DXSM generator.
 
 export {
+    int32toBigInt,
+    Uint,
+    Uint64,
+    Uint128,
     InplaceModMult128x64,
     InplaceModMult64x64,
     InplaceModAdd128,
     Inplace64RightShift32Xor,
     Inplace64RightShift48Xor
 };
+
+// mainly for testing
+function int32toBigInt(x: number): bigint {
+    // this is to deal with the rightmost bit being treated as a special sign bit
+    const lastBit: bigint = BigInt(x & 1);
+    return ((BigInt(x >>> 1) << 1n) | lastBit);
+}
+
+abstract class Uint  {
+    // each element is a 16-bit value
+    // except for the last one for Uint128, a 32-bit value
+    readonly values: Int32Array;
+    protected constructor(numElems: number) {
+        this.values = new Int32Array(numElems);
+    }
+    // mainly used for testing only
+    public fromBigint(x: bigint): void  {
+        const n: number = this.values.length;
+        for (let i: number = 0; i < n; i++) {
+            if (i === 6)  {
+                // for Uint128, last entry is a 32-bit word
+                this.values[i] = Number(x);
+                break;  // exit for
+            }
+            this.values[i] = Number(x & 0xFFFFn);
+            x >>= 16n;
+        }
+    }
+    // mainly used for testing only
+    public toBigInt(): bigint  {
+        let result: bigint = 0n;
+        const arr: Int32Array = this.values;
+        for (let i: number = 0; i < arr.length; i++) {
+            result |= int32toBigInt(arr[i]) << BigInt(16 * i);
+        }
+        return result;
+    }
+}
+
+class Uint64 extends Uint {
+    constructor()  {
+        super(4);
+    }
+}
+
+class Uint128 extends Uint {
+    constructor()  {
+        super(7);
+    }
+}
 
 // 128-bit (64-bit) integer is represented by 7 (4) 32-bit words,
 // but each is only filled with a 16-bit number, except for
@@ -45,13 +100,16 @@ export {
      b3 x a34
 */
 function InplaceModMult128x64(
-            num128: Int32Array,
-            num64: Int32Array): void  {
+            int128: Uint128,
+            int64: Uint64): void  {
 
     const Mask: number = 0xFFFF | 0;
     let val: number;
     let val1: number;
     let val2: number;
+
+    const num128: Int32Array = int128.values;
+    const num64: Int32Array = int64.values;
 
     val = Math.imul(num64[0] | 0, num128[0] | 0) | 0;
     let result0: number = val & Mask;
@@ -157,10 +215,14 @@ function InplaceModMult128x64(
              b2 x a01
              b3 x a0
 */
-function InplaceModMult64x64(num1: Int32Array,
-                              num2: Int32Array): void  {
+function InplaceModMult64x64(int1: Uint64,
+                              int2: Uint64): void  {
 
-    const Mask = 0xFFFF | 0;
+    const num1: Int32Array = int1.values;
+    const num2: Int32Array = int2.values;
+
+    const Mask: number = 0xFFFF | 0;
+
     let val;
     let val1;
     let val2;
@@ -202,10 +264,14 @@ function InplaceModMult64x64(num1: Int32Array,
 
 // result returned in first parameter
 function InplaceModAdd128(
-            num1: Int32Array,
-            num2: Int32Array): void  {
+            int1: Uint64,
+            int2: Uint64): void  {
+
+    const num1: Int32Array = int1.values;
+    const num2: Int32Array = int2.values;
 
     const Mask: number = 0xFFFF | 0;
+
     let val: number = num1[0] + num2[0];
     num1[0] = val & Mask;
 
@@ -236,7 +302,10 @@ function InplaceModAdd128(
 
 }
 
-function Inplace64RightShift32Xor(num: Int32Array): void {
+function Inplace64RightShift32Xor(int: Uint64): void {
+
+    const num: Int32Array = int.values;
+
     num[0] ^= num[2];
     num[1] ^= num[3];
     // ^=0 is the same as no op
@@ -244,7 +313,10 @@ function Inplace64RightShift32Xor(num: Int32Array): void {
     // num[3] ^= 0;
 }
 
-function Inplace64RightShift48Xor(num: Int32Array): void {
+function Inplace64RightShift48Xor(int: Uint64): void {
+
+    const num: Int32Array = int.values;
+
     num[0] ^= num[3];
     // ^=0 is the same as no op
     // num[1] ^= 0;
