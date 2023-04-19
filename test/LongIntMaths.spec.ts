@@ -2,12 +2,7 @@
 // SPDX-License-Identifier: MIT
 import {
     Uint64,
-    Uint128,
-    InplaceModMult128x64,
-    InplaceModMult64x64,
-    InplaceModAdd128,
-    Inplace64RightShift32Xor,
-    Inplace64RightShift48Xor
+    Uint128
 } from "../src/LongIntMaths.js";
 
 import { expect } from 'chai';
@@ -25,7 +20,7 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             const num2: Uint64 = new Uint64();
             calculatedResult.fromBigint(testMul1);
             num2.fromBigint(testMul2)
-            InplaceModMult128x64(calculatedResult, num2);
+            calculatedResult.inplaceModMult128x64(num2);
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();
@@ -42,7 +37,7 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             const num2: Uint64 = new Uint64();
             calculatedResult.fromBigint(testMul1);
             num2.fromBigint(testMul2)
-            InplaceModMult64x64(calculatedResult, num2);
+            calculatedResult.inplaceModMult64x64(num2);
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();
@@ -56,10 +51,10 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             const expectedResult: bigint = (testAdd1 + testAdd2) % 0x100000000000000000000000000000000n;
             // result is returned in first parameter
             const calculatedResult: Uint128 = new Uint128();
-            const num2: Uint64 = new Uint128();
+            const num2: Uint128 = new Uint128();
             calculatedResult.fromBigint(testAdd1);
             num2.fromBigint(testAdd2)
-            InplaceModAdd128(calculatedResult, num2);
+            calculatedResult.inplaceModAdd128(num2);
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();
@@ -73,7 +68,7 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             // result is returned in the parameter
             const calculatedResult: Uint64 = new Uint64();
             calculatedResult.fromBigint(testNum);
-            Inplace64RightShift32Xor(calculatedResult);
+            calculatedResult.inplace64RightShift32Xor();
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();
@@ -87,7 +82,7 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             // result is returned in the parameter
             const calculatedResult: Uint64 = new Uint64();
             calculatedResult.fromBigint(testNum);
-            Inplace64RightShift48Xor(calculatedResult);
+            calculatedResult.inplace64RightShift48Xor();
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();

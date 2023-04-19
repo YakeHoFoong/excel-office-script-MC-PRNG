@@ -7,15 +7,14 @@ import  {
     SeedSequence32
 } from "./SeedSequence32";
 
-export {
-    IRandomBitsGenerator,
+import  {
     NumberPair
+} from "./LongIntMaths";
+
+export {
+    IRandomBitsGenerator
 };
 
-type NumberPair = {
-    num1: Number;
-    num2: Number;
-}
 interface IRandomBitsGenerator  {
     readonly seedSequence: SeedSequence32;
     // return results through the parameter
