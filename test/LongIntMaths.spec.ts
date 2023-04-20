@@ -120,4 +120,31 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
         });
     });
 
+    describe("In place 64-bit right shift 9 verify using bigint", function (): void {
+        it("In place 64-bit right shift 9 Test 1", function (done): void {
+            const testNum: bigint = 0x890f8f345afead45n;
+            const expectedResult: bigint = (testNum >> 9n) % 0x10000000000000000n;
+            // result is returned in the parameter
+            const calculatedResult: Uint64 = new Uint64();
+            calculatedResult.fromBigint(testNum);
+            calculatedResult.inplace64RightShift9();
+            const actualResult: bigint = calculatedResult.toBigInt();
+            expect(actualResult).to.equal(expectedResult);
+            done();
+        });
+    });
+
+    describe("Rightmost 52-bits verify using bigint", function (): void {
+        it("Rightmost 52-bits Test 1", function (done): void {
+            const testNum: bigint = 0xf90f8f345afead45n;
+            const expectedResult: number = Number(testNum % 0x10000000000000n);
+            // result is returned in the parameter
+            const calculatedResult: Uint64 = new Uint64();
+            calculatedResult.fromBigint(testNum);
+            const actualResult: number = calculatedResult.rightmost52bits();
+            expect(actualResult).to.equal(expectedResult);
+            done();
+        });
+    });
+
 });

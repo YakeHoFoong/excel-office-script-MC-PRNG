@@ -50,4 +50,34 @@ describe("Random Distributions using PCG64 DXSM bits generator", function (): vo
         });
     });
 
+    describe("Spawn children and generate standard normal random", function (): void {
+        it("Spawn children and generate standard normal random Test 1", function (done): void {
+
+            const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
+            const config: ISeedSequence32Config = {
+                ...seedSequence32ConfigDefaults,
+                entropy: TEST_ENTROPY
+            };
+            const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
+            const seqs: SeedSequence32[] = mySeedSequence.spawn(3);
+
+            const actualResults: number[][] = [];
+            for (const s of seqs) {
+                const myPCG64: PCG64DXSM = new PCG64DXSM(s);
+                const randomDist: RandomDistributions = new RandomDistributions(myPCG64);
+                const actualResult: number[] =
+                    [randomDist.randomStandardNormal(), randomDist.randomStandardNormal()];
+                actualResults.push(actualResult);
+            }
+
+            const expectedResult: number[][] = [
+                [-0.27932291958886135, 0.9790678461956837],
+                [-0.3636865736729936, 0.43383712182942635],
+                [-0.08007465040036572, 0.3726534813804484],
+            ];
+            assert.deepEqual(actualResults, expectedResult);
+            done();
+        });
+    });
+
 });

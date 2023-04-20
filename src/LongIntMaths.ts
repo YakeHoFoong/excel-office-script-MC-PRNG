@@ -38,12 +38,12 @@ class Uint64 {
     }
 
     // during random number generation
-    copyFrom(num: Uint64): void  {
+    copyFrom(num: Uint64): void {
         this.values.set(num.values);
     }
 
     // for constructing from the seeds
-    from32bits(num1: number, num2: number): void  {
+    from32bits(num1: number, num2: number): void {
         const mask: number = 0xFFFF;
         const values: Int32Array = this.values;
         values[0] = num1 & mask;
@@ -52,14 +52,14 @@ class Uint64 {
         values[3] = num2 >>> 16;
     }
 
-    to32bits(numPair: NumberPair): void  {
+    to32bits(numPair: NumberPair): void {
         const values: Int32Array = this.values;
         numPair.num1 = int32toNumber((values[1] << 16) | values[0]);
         numPair.num2 = int32toNumber((values[3] << 16) | values[2]);
     }
 
     // mainly used for testing only
-    fromBigint(x: bigint): void  {
+    fromBigint(x: bigint): void {
         for (let i: number = 0; i < 4; i++) {
             this.values[i] = Number(x & 0xFFFFn);
             x >>= 16n;
@@ -67,7 +67,7 @@ class Uint64 {
     }
 
     // mainly used for testing only
-    toBigInt(): bigint  {
+    toBigInt(): bigint {
         let result: bigint = 0n;
         const arr: Int32Array = this.values;
         for (let i: number = 0; i < arr.length; i++) {
@@ -88,7 +88,7 @@ class Uint64 {
                  b2 x a01
                  b3 x a0
     */
-    inplaceModMult64x64(int2: Uint64): void  {
+    inplaceModMult64x64(int2: Uint64): void {
 
         const num1: Int32Array = this.values;
         const num2: Int32Array = int2.values;
@@ -114,17 +114,17 @@ class Uint64 {
 
         // leftmost, due to modulo, just let the product overflow
         val = (num1[3] << 16) | num1[2];
-        val1 +=  Math.imul(num2[0] | 0, val | 0) | 0;
+        val1 += Math.imul(num2[0] | 0, val | 0) | 0;
         val = (num1[2] << 16) | num1[1];
-        val1 +=  Math.imul(num2[1] | 0, val | 0) | 0;
+        val1 += Math.imul(num2[1] | 0, val | 0) | 0;
         val = (num1[1] << 16) | num1[0];
-        val1 +=  Math.imul(num2[2] | 0, val | 0) | 0;
+        val1 += Math.imul(num2[2] | 0, val | 0) | 0;
 
         let result2: number = val1 & mask;
         val1 >>>= 16;
 
         // final one, special
-        val1 +=  Math.imul(num2[3] | 0, num1[0] | 0);
+        val1 += Math.imul(num2[3] | 0, num1[0] | 0);
 
         // in place results
         num1[0] = result0 | 0;
@@ -156,6 +156,49 @@ class Uint64 {
         // num[3] ^= 0;
     }
 
+    inplace64RightShift9(): void {
+
+        const num: Int32Array = this.values;
+
+        num[0] >>>= 9;
+        num[0] |= (num[1] & 0x1FF) << 7;
+        num[1] >>>= 9;
+        num[1] |= (num[2] & 0x1FF) << 7;
+        num[2] >>>= 9;
+        num[2] |= (num[3] & 0x1FF) << 7;
+        num[3] >>>= 9;
+    }
+
+    rightmost52bits(): number {
+
+        const vals: Int32Array = this.values;
+
+        // 16 + 8 = 24 bits
+        const loPart: number =
+            vals[0] | ((vals[1] & 0xFF) << 16);
+        // 8 + 16 + 4 = 28 bits
+        const hiPart: number = (vals[1] >>> 8) | (vals[2] << 8) | ((vals[3] & 0xF) << 24);
+
+        return hiPart * 0x1000000 + loPart;
+    }
+
+
+    isLessThan(int2: Uint64): boolean {
+
+        const num1: Int32Array = this.values;
+        const num2: Int32Array = int2.values;
+
+        if (num1[3] > num2[3])  return false;
+        if (num1[3] < num2[3])  return true;
+
+        if (num1[2] > num2[2])  return false;
+        if (num1[2] < num2[2])  return true;
+
+        if (num1[1] > num2[1])  return false;
+        if (num1[1] < num2[1])  return true;
+
+        return (num1[0] < num2[0]);
+    }
 }
 
 class Uint128  {
