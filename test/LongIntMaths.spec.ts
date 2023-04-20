@@ -10,6 +10,23 @@ import "mocha";
 
 describe("Long 128-bit and 64-bit integer maths", function (): void {
 
+    describe("In place modulo multiply 128x128 verify using bigint", function (): void {
+        it("In place modulo multiply 128x128 Test 1", function (done): void {
+            const testMul1: bigint = 0xa234f345090fbcdf290650968cae888dn;
+            const testMul2: bigint = 0xc1217be098ca3210290809ce560989den;
+            const expectedResult: bigint = (testMul1 * testMul2) % 0x100000000000000000000000000000000n;
+            // result is returned in first parameter
+            const calculatedResult: Uint128 = new Uint128();
+            const num2: Uint128 = new Uint128();
+            calculatedResult.fromBigint(testMul1);
+            num2.fromBigint(testMul2)
+            calculatedResult.inplaceModMult128x128(num2);
+            const actualResult: bigint = calculatedResult.toBigInt();
+            expect(actualResult).to.equal(expectedResult);
+            done();
+        });
+    });
+
     describe("In place modulo multiply 128x64 verify using bigint", function (): void {
         it("In place modulo multiply 128x64 Test 1", function (done): void {
             const testMul1: bigint = 0xa234f345090fbcdf290650968cae888dn;
@@ -83,6 +100,20 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
             const calculatedResult: Uint64 = new Uint64();
             calculatedResult.fromBigint(testNum);
             calculatedResult.inplace64RightShift48Xor();
+            const actualResult: bigint = calculatedResult.toBigInt();
+            expect(actualResult).to.equal(expectedResult);
+            done();
+        });
+    });
+
+    describe("In place modulo left shift 1 or 1 verify using bigint", function (): void {
+        it("In place modulo left shift 1 or 1 Test 1", function (done): void {
+            const testNum: bigint = 0x6dbf895699a980568098bdbdf6378398n;
+            const expectedResult: bigint = ((testNum << 1n) | 1n) % 0x100000000000000000000000000000000n;
+            // result is returned in the parameter
+            const calculatedResult: Uint128 = new Uint128();
+            calculatedResult.fromBigint(testNum);
+            calculatedResult.inplaceMod128LeftShift1or1();
             const actualResult: bigint = calculatedResult.toBigInt();
             expect(actualResult).to.equal(expectedResult);
             done();

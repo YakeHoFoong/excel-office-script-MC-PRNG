@@ -15,6 +15,31 @@ import { assert } from 'chai';
 import "mocha";
 
 describe("Seed Sequence 32", function (): void {
+
+    describe("No spawn and generate state", function (): void {
+        it("No spawn and generate state Test 1", function (done): void {
+            const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
+            const config: ISeedSequence32Config = {
+                ...seedSequence32ConfigDefaults,
+                entropy: TEST_ENTROPY
+            };
+            const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
+            let xs: Int32Array = mySeedSequence.generateState(8);
+            const actualResult: bigint[] = [];
+            xs.forEach((item: number): void => {
+                actualResult.push(int32toBigInt(item));
+            });
+            const expectedResult: bigint[] = [
+                    0xf431cc88n, 0xb5bb44b2n,
+                    0xb2e89874n, 0xe3977bacn,
+                    0x9d0ba2f2n, 0xb18b61e2n,
+                    0xf72adfa6n, 0x2480e33bn];
+            // expect(actualResults).to.equal(expectedResult);
+            assert.deepEqual(actualResult, expectedResult);
+            done();
+        });
+    });
+
     describe("Spawn children and generate state", function (): void {
         it("Spawn and generate Test 1", function (done): void {
             const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
@@ -45,4 +70,5 @@ describe("Seed Sequence 32", function (): void {
             done();
         });
     });
+
 });

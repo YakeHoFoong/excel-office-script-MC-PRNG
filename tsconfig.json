@@ -26,7 +26,8 @@
     "src/RandomInterface.ts",
     "src/PCG64DXSM.ts",
     "test/SeedSequence32.spec.ts",
-    "test/LongIntMaths.spec.ts"
+    "test/LongIntMaths.spec.ts",
+    "test/PCG64DXSM.spec.ts"
   ],
   "exclude": [
     "node_modules",
