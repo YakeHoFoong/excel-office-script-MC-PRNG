@@ -7,8 +7,8 @@ import  {
     SeedSequence32
 } from "./SeedSequence32";
 
-import  {
-    NumberPair
+import {
+    NumberPair, Uint64
 } from "./LongIntMaths";
 
 export {
@@ -20,4 +20,5 @@ interface IRandomBitsGenerator  {
     // return results through the parameter
     // to avoid constantly new-ing new objects
     next64(result: NumberPair): void;
+    nextUint64(result: Uint64): void;
 }
