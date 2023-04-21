@@ -3,12 +3,15 @@
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
 
-// This is a TypeScript port of some of the contents
-// of the following parts of the Numpy library:
-// https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c
-// https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h
-
-// This module implements unit uniform double and standard normal.
+/**
+ * This is a TypeScript port of some of the contents
+ * of the following parts of the Numpy library:
+ * https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c
+ * https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h
+ *
+ * This module implements unit uniform double and standard normal. * @packageDocumentation
+ * @packageDocumentation
+ */
 
 import  {
     IRandomBitsGenerator

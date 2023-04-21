@@ -1,21 +1,18 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
 
-// This module contain functions that perform arithmetic
-// for 128bit and 64bit integers for the random number generators.
-// Currently only implemented those needed for the PCG64-DXSM generator.
+/**
+ * This module contains functions that perform arithmetic
+ * for 128-bit and 64-bit integers for the random number generators.
+ * Currently only implemented those needed for the PCG64-DXSM generator.
+ * @packageDocumentation
+ */
 
 export {
     int32toBigInt,
-    NumberPair,
     Uint64,
     Uint128
 };
-
-type NumberPair = {
-    num1: number;
-    num2: number;
-}
 
 // mainly for testing
 function int32toBigInt(x: number): bigint {
@@ -24,13 +21,9 @@ function int32toBigInt(x: number): bigint {
     return ((BigInt(x >>> 1) << 1n) | lastBit);
 }
 
-function int32toNumber(x: number): number {
-    if (x < 0)  return (x & 0x7FFFFFFF) + 0x80000000;
-    return x;
-}
-
 class Uint64 {
 
+    /** @internal */
     readonly values: Int32Array;
 
     constructor() {
@@ -50,12 +43,6 @@ class Uint64 {
         values[1] = num1 >>> 16;
         values[2] = num2 & mask;
         values[3] = num2 >>> 16;
-    }
-
-    to32bits(numPair: NumberPair): void {
-        const values: Int32Array = this.values;
-        numPair.num1 = int32toNumber((values[1] << 16) | values[0]);
-        numPair.num2 = int32toNumber((values[3] << 16) | values[2]);
     }
 
     // mainly used for testing only
@@ -225,6 +212,7 @@ class Uint64 {
 
 class Uint128  {
 
+    /** @internal */
     readonly high64: Uint64;
     readonly low64: Uint64;
 

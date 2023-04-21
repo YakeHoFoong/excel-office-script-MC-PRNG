@@ -24,7 +24,7 @@ describe("Seed Sequence 32", function (): void {
                 entropy: TEST_ENTROPY
             };
             const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
-            let xs: Int32Array = mySeedSequence.generateState(8);
+            const xs: Int32Array = mySeedSequence.generateState(8);
             const actualResult: bigint[] = [];
             xs.forEach((item: number): void => {
                 actualResult.push(int32toBigInt(item));
@@ -53,7 +53,7 @@ describe("Seed Sequence 32", function (): void {
             const actualResults: bigint[][] = [];
             for (const s of seqs) {
                 const actualResult: bigint[] = [];
-                let xs: Int32Array = s.generateState(4);
+                const xs: Int32Array = s.generateState(4);
                 xs.forEach((item: number): void => {
                     actualResult.push(int32toBigInt(item));
                 });

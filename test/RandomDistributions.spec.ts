@@ -37,7 +37,7 @@ describe("Random Distributions using PCG64 DXSM bits generator", function (): vo
                 const myPCG64: PCG64DXSM = new PCG64DXSM(s);
                 const randomDist: RandomDistributions = new RandomDistributions(myPCG64);
                 const actualResult: number[] = []
-                for (let i: number = 0; i < 20; i++)
+                for (let i = 0; i < 20; i++)
                     actualResult.push(randomDist.randomUnit());
                 actualResults.push(actualResult);
             }
@@ -75,7 +75,7 @@ describe("Random Distributions using PCG64 DXSM bits generator", function (): vo
                 const myPCG64: PCG64DXSM = new PCG64DXSM(s);
                 const randomDist: RandomDistributions = new RandomDistributions(myPCG64);
                 const actualResult: number[] = []
-                for (let i: number = 0; i < 100; i++)
+                for (let i = 0; i < 100; i++)
                     actualResult.push(randomDist.randomStandardNormal());
                 actualResults.push(actualResult);
             }

@@ -3,9 +3,15 @@
 // SPDX-FileCopyrightText: (c) 2019 NumPy Developers
 // SPDX-License-Identifier: MIT
 
-// This is a TypeScript port of almost all of the contents
-// of the following part of the Numpy library:
-// https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
+/**
+ * This is a TypeScript port of almost all of the contents
+ * of the following part of the Numpy library:
+ * https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
+ *
+ * This module contains the calculations to produce high-quality seeds
+ * based on inputs of low-quality seeds.
+ * @packageDocumentation
+ */
 
 export {
     SeedSequence32,
