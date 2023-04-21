@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
-    SeedSequence32,
-    ISeedSequence32Config,
-    seedSequence32ConfigDefaults
+    SeedSequence32
 } from "../src/SeedSequence32.js";
 
 import {
@@ -25,11 +23,7 @@ describe("Random Distributions using PCG64 DXSM bits generator", function (): vo
         it("Spawn children and generate unit uniform double Test 1", function (done): void {
 
             const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
-            const config: ISeedSequence32Config = {
-                ...seedSequence32ConfigDefaults,
-                entropy: TEST_ENTROPY
-            };
-            const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
+            const mySeedSequence: SeedSequence32 = new SeedSequence32(TEST_ENTROPY, 4);
             const seqs: SeedSequence32[] = mySeedSequence.spawn(10);
 
             const actualResults: number[][] = [];
@@ -63,11 +57,7 @@ describe("Random Distributions using PCG64 DXSM bits generator", function (): vo
         it("Spawn children and generate standard normal random Test 1", function (done): void {
 
             const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
-            const config: ISeedSequence32Config = {
-                ...seedSequence32ConfigDefaults,
-                entropy: TEST_ENTROPY
-            };
-            const mySeedSequence: SeedSequence32 = new SeedSequence32(config);
+            const mySeedSequence: SeedSequence32 = new SeedSequence32(TEST_ENTROPY, 4);
             const seqs: SeedSequence32[] = mySeedSequence.spawn(10);
 
             const actualResults: number[][] = [];

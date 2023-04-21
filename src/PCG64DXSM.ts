@@ -6,7 +6,7 @@
 /**
  * This is a TypeScript port of some of the contents
  * of the following part of the Numpy library:
- * https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c
+ * @see [distributions.c in Numpy](https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c)
  * This module implements the PCG64-DXSM random number generator.
  * @packageDocumentation
  */
@@ -36,6 +36,10 @@ const PCG_DEFAULT_MULTIPLIER: Uint128 = new Uint128();
 PCG_DEFAULT_MULTIPLIER.low64.values.set([0xf645, 0x9fcc, 0xdf64, 0x4385]);
 PCG_DEFAULT_MULTIPLIER.high64.values.set([0x5da4, 0x1fc6, 0xed05, 0x2360]);
 
+/**
+ * This class corresponds to the same BitGenerator in Numpy.
+ * @see [distributions.c in Numpy](https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c)
+ */
  class PCG64DXSM implements IRandomBitsGenerator  {
     readonly seedSequence;
     private readonly state: Uint128;
@@ -63,17 +67,29 @@ PCG_DEFAULT_MULTIPLIER.high64.values.set([0x5da4, 0x1fc6, 0xed05, 0x2360]);
 
     }
 
+    /**
+     * This method is used together with the DXSM calculation.
+     * It uses the 64-bit Cheap Multiplier instead of the 128-bit efault Multiplier.
+     */
     private step_cm(): void  {
         this.state.inplaceModMult128x64(PCG_CHEAP_MULTIPLIER_128);
         this.state.inplaceModAdd128(this.inc);
     }
 
+    /**
+     * This method is needed only for the initial seeding of the PRNG.
+     * It uses the 128-bit efault Multiplier instead of the 64-bit Cheap Multiplier.
+     */
     private step_default(): void  {
         this.state.inplaceModMult128x128(PCG_DEFAULT_MULTIPLIER);
         this.state.inplaceModAdd128(this.inc);
     }
 
-    // use DXSM
+    /**
+     * This method generates 64-bits of random value using the DXSM method.
+     * @param result - the next random unsigned 64-bit integer to be returned
+     * @returns - none; the parameter is updated, and object internal state is updated
+     */
     nextUint64(result: Uint64): void  {
         const lo: Uint64 = this.lo;  // lo is scratch value
 

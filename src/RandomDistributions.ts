@@ -6,10 +6,10 @@
 /**
  * This is a TypeScript port of some of the contents
  * of the following parts of the Numpy library:
- * https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c
- * https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h
+ * @see [distributions.c in Numpy] (https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c)
+ * @see [ziggurat_constants in Numpy](https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h)
  *
- * This module implements unit uniform double and standard normal. * @packageDocumentation
+ * This module implements unit uniform double and standard normal.
  * @packageDocumentation
  */
 
@@ -405,13 +405,21 @@ class RandomDistributions  {
         this.rabs = new Uint64();
     }
 
-    // returns next random number in the semi-open interval
-    // [0, 1)
+    /**
+     * @returns - next random number (double) in the semi-open interval [0, 1)
+     */
     randomUnit(): number {
         this.bitsGenerator.nextUint64(this.uint64);
         return this.uint64.leftmost53bits() * UINT53_TO_DOUBLE;
     }
 
+    /**
+     * @returns - next random standard normal, i.e.,
+     * mean of zero and standard deviation of one.
+     * The Ziggurat method is used for speed. Both the algorithm and constants are copied from Numpy.
+     * @see [distributions.c in Numpy] (https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c)
+     * @see [ziggurat_constants in Numpy](https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h)
+     */
     randomStandardNormal(): number  {
 
         const r: Uint64 = this.r;
