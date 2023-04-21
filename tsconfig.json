@@ -18,7 +18,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "strict": true,
-    "strictFunctionTypes": true
+    "strictFunctionTypes": true,
+    "strictNullChecks": true
   },
   "files": [
     "src/SeedSequence32.ts",

@@ -20,7 +20,7 @@ type NumberPair = {
 // mainly for testing
 function int32toBigInt(x: number): bigint {
     // this is to deal with the rightmost bit being treated as a special sign bit
-    const lastBit: bigint = BigInt(x & 1);
+    const lastBit = BigInt(x & 1);
     return ((BigInt(x >>> 1) << 1n) | lastBit);
 }
 
@@ -44,7 +44,7 @@ class Uint64 {
 
     // for constructing from the seeds
     from32bits(num1: number, num2: number): void {
-        const mask: number = 0xFFFF;
+        const mask = 0xFFFF;
         const values: Int32Array = this.values;
         values[0] = num1 & mask;
         values[1] = num1 >>> 16;
@@ -60,7 +60,7 @@ class Uint64 {
 
     // mainly used for testing only
     fromBigint(x: bigint): void {
-        for (let i: number = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i++) {
             this.values[i] = Number(x & 0xFFFFn);
             x >>= 16n;
         }
@@ -68,9 +68,9 @@ class Uint64 {
 
     // mainly used for testing only
     toBigInt(): bigint {
-        let result: bigint = 0n;
+        let result = 0n;
         const arr: Int32Array = this.values;
-        for (let i: number = 0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i++) {
             result |= int32toBigInt(arr[i]) << BigInt(16 * i);
         }
         return result;
@@ -100,7 +100,7 @@ class Uint64 {
         let val2;
 
         val = Math.imul(num2[0] | 0, num1[0] | 0) | 0;
-        let result0: number = val & mask;
+        const result0: number = val & mask;
         val1 = val >>> 16;
 
         val = Math.imul(num2[0] | 0, num1[1] | 0) | 0;
@@ -109,7 +109,7 @@ class Uint64 {
         val = Math.imul(num2[1] | 0, num1[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result1: number = val1 & mask;
+        const result1: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         // leftmost, due to modulo, just let the product overflow
@@ -120,7 +120,7 @@ class Uint64 {
         val = (num1[1] << 16) | num1[0];
         val1 += Math.imul(num2[2] | 0, val | 0) | 0;
 
-        let result2: number = val1 & mask;
+        const result2: number = val1 & mask;
         val1 >>>= 16;
 
         // final one, special
@@ -182,6 +182,28 @@ class Uint64 {
         return hiPart * 0x1000000 + loPart;
     }
 
+    rightmostByte(): number {
+        return this.values[0] & 0xFF;
+    }
+
+    leftmost53bits(): number {
+        const vals: Int32Array = this.values;
+        // 5 + 16 + 8 = 29 bits
+        const loPart: number =
+            (vals[0] >>> 11) | (vals[1] << 5) |  ((vals[2] & 0xFF) << 21);
+        // 8 + 16 = 24 bits
+        const hiPart: number = (vals[2] >>> 8) | (vals[3] << 8);
+
+        return hiPart * 0x20000000 + loPart;
+    }
+
+    isBit9fromRightSet(): boolean {
+        return ((this.values[0] & 0x100) !== 0);
+    }
+
+    clearLeftmost12bits(): void {
+        this.values[3] &= 0xF;
+    }
 
     isLessThan(int2: Uint64): boolean {
 
@@ -262,7 +284,7 @@ class Uint128  {
         const num64: Int32Array = int64.values;
 
         val = Math.imul(num64[0] | 0, num128lo[0] | 0) | 0;
-        let result0: number = val & mask;
+        const result0: number = val & mask;
         val1 = val >>> 16;
 
         val = Math.imul(num64[0] | 0, num128lo[1] | 0) | 0;
@@ -271,7 +293,7 @@ class Uint128  {
         val = Math.imul(num64[1] | 0, num128lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result1: number = val1 & mask;
+        const result1: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num64[0] | 0, num128lo[2] | 0) | 0;
@@ -283,7 +305,7 @@ class Uint128  {
         val = Math.imul(num64[2] | 0, num128lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result2: number = val1 & mask;
+        const result2: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num64[0] | 0, num128lo[3] | 0) | 0;
@@ -298,7 +320,7 @@ class Uint128  {
         val = Math.imul(num64[3] | 0, num128lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result3: number = val1 & mask;
+        const result3: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num64[0] | 0, num128hi[0] | 0) | 0;
@@ -313,7 +335,7 @@ class Uint128  {
         val = Math.imul(num64[3] | 0, num128lo[1] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result4: number = val1 & mask;
+        const result4: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num64[0] | 0, num128hi[1] | 0) | 0;
@@ -328,7 +350,7 @@ class Uint128  {
         val = Math.imul(num64[3] | 0, num128lo[2] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result5: number = val1 & mask;
+        const result5: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         // leftmost, due to modulo, just let the product overflow
@@ -400,7 +422,7 @@ class Uint128  {
         const num2hi: Int32Array = int128.high64.values;
 
         val = Math.imul(num2lo[0] | 0, num1lo[0] | 0) | 0;
-        let result0: number = val & mask;
+        const result0: number = val & mask;
         val1 = val >>> 16;
 
         val = Math.imul(num2lo[0] | 0, num1lo[1] | 0) | 0;
@@ -409,7 +431,7 @@ class Uint128  {
         val = Math.imul(num2lo[1] | 0, num1lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result1: number = val1 & mask;
+        const result1: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num2lo[0] | 0, num1lo[2] | 0) | 0;
@@ -421,7 +443,7 @@ class Uint128  {
         val = Math.imul(num2lo[2] | 0, num1lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result2: number = val1 & mask;
+        const result2: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num2lo[0] | 0, num1lo[3] | 0) | 0;
@@ -436,7 +458,7 @@ class Uint128  {
         val = Math.imul(num2lo[3] | 0, num1lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result3: number = val1 & mask;
+        const result3: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num2lo[0] | 0, num1hi[0] | 0) | 0;
@@ -454,7 +476,7 @@ class Uint128  {
         val = Math.imul(num2hi[0] | 0, num1lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result4: number = val1 & mask;
+        const result4: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         val = Math.imul(num2lo[0] | 0, num1hi[1] | 0) | 0;
@@ -475,7 +497,7 @@ class Uint128  {
         val = Math.imul(num2hi[1] | 0, num1lo[0] | 0) | 0;
         val1 += val & mask;
         val2 += val >>> 16;
-        let result5: number = val1 & mask;
+        const result5: number = val1 & mask;
         val1 = (val2 + (val1 >>> 16)) | 0;
 
         // leftmost, due to modulo, just let the product overflow
@@ -495,7 +517,7 @@ class Uint128  {
         val = (num1lo[1] << 16) | num1lo[0];
         val1 +=  Math.imul(num2hi[2] | 0, val | 0) | 0;
         // save result
-        let result6: number = val1 & mask;
+        const result6: number = val1 & mask;
         val1 >>>= 16;
 
         // final one, special

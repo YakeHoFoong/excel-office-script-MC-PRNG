@@ -13,7 +13,7 @@ export {
     seedSequence32ConfigDefaults
 };
 
-const DEFAULT_POOL_SIZE: number = 4;
+const DEFAULT_POOL_SIZE = 4;
 const XSHIFT: number = 16 | 0;
 function mix(x: number, y: number): number {
     const MIX_MULT_L: number = 0xca01f9dd | 0;
@@ -48,7 +48,7 @@ class Cycle  {
 class HashMix  {
     private hashConst: number;
     constructor()  {
-        const INIT_A: number = 0x43b0d7e5;
+        const INIT_A = 0x43b0d7e5;
         this.hashConst = INIT_A | 0;
     }
     mix(value: number): number {

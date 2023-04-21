@@ -29,8 +29,8 @@ const UINT53_TO_DOUBLE: number =  1.0 / 9007199254740992.0;
 // Ziggurate constants from Numpy
 // https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/ziggurat_constants.h
 
-const zigguratNorR: number = 3.6541528853610087963519472518;
-const zigguratNorInvR: number =
+const zigguratNorR = 3.6541528853610087963519472518;
+const zigguratNorInvR =
     0.27366123732975827203338247596; // 1.0 / zigguratNorR;
 
 const wiDouble: number[] = [
@@ -384,7 +384,7 @@ const kiRaw: number[][] = [
 
 const kiUint64: Uint64[] = [];
 
-for (let i: number = 0; i < 256; i++) {
+for (let i = 0; i < 256; i++) {
     const x: Uint64 = new Uint64();
     x.values.set(kiRaw[i]);
     kiUint64.push(x);
@@ -405,18 +405,11 @@ class RandomDistributions  {
     // returns next random number in the semi-open interval
     // [0, 1)
     randomUnit(): number {
-         this.bitsGenerator.nextUint64(this.uint64);
-         const vals: Int32Array = this.uint64.values;
-         // 5 + 16 + 8 = 29 bits
-         const loPart: number =
-             (vals[0] >>> 11) | (vals[1] << 5) |  ((vals[2] & 0xFF) << 21);
-         // 8 + 16 = 24 bits
-         const hiPart: number = (vals[2] >>> 8) | (vals[3] << 8);
+        this.bitsGenerator.nextUint64(this.uint64);
+        return this.uint64.leftmost53bits() * UINT53_TO_DOUBLE;
+    }
 
-         return (hiPart * 0x20000000 + loPart) * UINT53_TO_DOUBLE;
-     }
-
-     randomStandardNormal(): number  {
+    randomStandardNormal(): number  {
 
         const r: Uint64 = this.r;
         const rabs: Uint64 = this.rabs;
@@ -425,19 +418,18 @@ class RandomDistributions  {
         let yy: number;
         while (true) {
             this.bitsGenerator.nextUint64(r);
-            const idx: number = r.values[0] & 0xFF;
-            const sign: number = r.values[0] & 0x100;
+            const idx: number = r.rightmostByte();
             rabs.copyFrom(r);
             rabs.inplace64RightShift9();
-            rabs.values[3] &= 0xF;
+            rabs.clearLeftmost12bits();
             const rabsNum: number = rabs.rightmost52bits();
             x = rabsNum * wiDouble[idx];
-            if (sign !== 0)
+            if (r.isBit9fromRightSet())
                 x = -x;
             if (rabs.isLessThan(kiUint64[idx]))
                 return x; /* 99.3% of the time return here */
             if (idx === 0) {
-                const condition: boolean = ((rabs.values[0] & 0x100) !== 0);
+                const condition: boolean = rabs.isBit9fromRightSet();
                 while (true) {
                     /* Switch to 1.0 - U to avoid log(0.0), see GH 13361 */
                     xx = -zigguratNorInvR * Math.log1p(this.randomUnit());
@@ -454,6 +446,6 @@ class RandomDistributions  {
             }
         }
 
-     }
+    }
 
 }
