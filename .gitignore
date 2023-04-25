@@ -7,8 +7,8 @@ build/
 dist/
 .idea/
 .old/
-src/*.js
-src/*.js.map
-test/*.js
-test/*.js.map
+src/**/*.js
+src/**/*.js.map
+test/**/*.js
+test/**/*.js.map
 test/Python/.idea/

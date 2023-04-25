@@ -8,11 +8,11 @@
 
 import  {
     SeedSequence32
-} from "./SeedSequence32";
+} from "./SeedSequence32.js";
 
 import {
     Uint64
-} from "./LongIntMaths";
+} from "./LongIntMaths.js";
 
 export {
     IRandomBitsGenerator

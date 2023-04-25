@@ -1,16 +1,19 @@
 {
-  "SPDX-FileCopyrightText": "© 2023 Yake Ho Foong",
-  "SPDX-License-Identifier": "MIT",
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-    "noImplicitAny": true,
-    "module": "es6",
-    "target": "es2020",
-    "lib": [
-      "es2020"
-    ],
-    "sourceMap": true,
     "baseUrl": ".",
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "jsx": "react",
+    "noEmitOnError": true,
+    "sourceMap": true,
+    "target": "es2020",
+    "outDir": ".",
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "alwaysStrict": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
@@ -21,27 +24,18 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true
   },
-  "files": [
-    "src/SeedSequence32.ts",
-    "src/LongIntMaths.ts",
-    "src/RandomInterface.ts",
-    "src/PCG64DXSM.ts",
-    "src/RandomDistributions.ts",
-    "test/SeedSequence32.spec.ts",
-    "test/LongIntMaths.spec.ts",
-    "test/PCG64DXSM.spec.ts",
-    "test/RandomDistributions.spec.ts"
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.spec.ts"
   ],
   "exclude": [
     "node_modules",
+    "node_modules/**/*.*",
     "dist",
     "lib",
     "lib-amd"
   ],
-  "include": [
-    "src/**/*",
-    "test/**/*"
-  ]
+  "ts-node": { 
+    "files": true
+  }
 }
-
-
