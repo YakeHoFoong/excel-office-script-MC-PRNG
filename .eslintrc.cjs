@@ -1,10 +1,12 @@
 module.exports =  {
     plugins: [
         "@typescript-eslint/eslint-plugin",
-        "eslint-plugin-tsdoc"
+        "eslint-plugin-tsdoc",
+        "office-addins"
     ],
     extends:  [
-        'plugin:@typescript-eslint/recommended'
+        "plugin:@typescript-eslint/recommended",
+        "plugin:office-addins/recommended",
     ],
     parser:  '@typescript-eslint/parser',
     parserOptions: {
@@ -14,6 +16,7 @@ module.exports =  {
         sourceType: "module"
     },
     rules: {
-        "tsdoc/syntax": "warn"
+        "tsdoc/syntax": "warn",
+        "@typescript-eslint/no-namespace": "off"
     }
 };

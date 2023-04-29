@@ -23,8 +23,7 @@ function mix(x, y) {
     const MIX_MULT_R = 0x4973f715 | 0;
     x |= 0;
     y |= 0;
-    const result = ((Math.imul(MIX_MULT_L, x) | 0)
-        - (Math.imul(MIX_MULT_R, y) | 0)) | 0;
+    const result = ((Math.imul(MIX_MULT_L, x) | 0) - (Math.imul(MIX_MULT_R, y) | 0)) | 0;
     return result ^ (result >>> XSHIFT);
 }
 /**
@@ -71,28 +70,32 @@ class HashMix {
  */
 class SeedSequence32 {
     /**
-     * @param entropy - this is the random seed, in Int32Array of any size
-     * @param poolSize - pool size, minimum 4, just use this if not sure
-     * @param parent - do **NOT** use this, it is only for internal use in the module
+     * @param config - contains either entropy and pool size, or parent and child number.
      */
-    constructor(entropy, poolSize, parent) {
-        if (entropy === null || entropy.length === 0)
-            throw new Error("entropy parameter cannot be null or empty");
-        if (poolSize < MINIMUM_POOL_SIZE)
-            throw new Error("poolSize argument cannot be smaller than "
-                + MINIMUM_POOL_SIZE);
-        this.entropy = new Int32Array(entropy); // copy just to be safe
-        this.poolSize = poolSize;
-        this.pool = new Int32Array(poolSize);
-        if (parent === undefined) { // constructor not called by spawn
+    constructor(config) {
+        if (config.CONFIG_TYPE === "PARENT") {
+            if (config.entropy === null || config.entropy.length === 0)
+                throw new Error("entropy parameter cannot be null or empty");
+            if (config.poolSize < MINIMUM_POOL_SIZE)
+                throw new Error("poolSize parameter cannot be smaller than " + MINIMUM_POOL_SIZE);
+            this.entropy = new Int32Array(config.entropy); // copy to be safe
+            this.poolSize = config.poolSize;
+            this.nChildrenSpawned = 0 | 0;
             this.spawnKey = new Int32Array(0);
-            this.nChildrenSpawned = 0;
         }
-        else { // constructor called by spawn
-            this.spawnKey = new Int32Array(parent.spawnKey.length + 1);
-            this.nChildrenSpawned = parent.nChildrenSpawned;
+        else {
+            // config.CONFIG_TYPE === "CHILD"
+            this.entropy = config.parent.entropy;
+            this.poolSize = config.parent.poolSize;
+            this.nChildrenSpawned = config.nChildrenSpawned; // this is before the parent spawned the children
+            const oldKeyLen = config.parent.spawnKey.length | 0;
+            this.spawnKey = new Int32Array(oldKeyLen + 1);
+            if (oldKeyLen > 0)
+                this.spawnKey.set(config.parent.spawnKey);
+            this.spawnKey[oldKeyLen] = (config.childIndex + this.nChildrenSpawned) | 0;
         }
-        this.isReady = false;
+        this.pool = new Int32Array(this.poolSize);
+        this.mixEntropy(this.pool, this.getAssembledEntropy());
     }
     mixEntropy(mixer, entropyArray) {
         const hashMix = new HashMix();
@@ -121,8 +124,7 @@ class SeedSequence32 {
         const runEntropy = this.entropy;
         const spawnEntropy = this.spawnKey;
         // zero-fill or pad in the first case, see Numpy code comments
-        const oldSize = (spawnEntropy.length > 0 && runEntropy.length < this.poolSize) ?
-            this.poolSize : runEntropy.length;
+        const oldSize = spawnEntropy.length > 0 && runEntropy.length < this.poolSize ? this.poolSize : runEntropy.length;
         const entropyArray = new Int32Array(oldSize + spawnEntropy.length);
         entropyArray.set(runEntropy);
         entropyArray.set(spawnEntropy, oldSize);
@@ -136,11 +138,9 @@ class SeedSequence32 {
      * @returns - a high-quality random seed in an Int32Array of length nWords specified by the parameter
      */
     generateState(nWords) {
+        if (!Number.isInteger(nWords) || nWords < 1)
+            throw Error("SeedSequence32 generateState method must be called with a whole number.");
         nWords |= 0;
-        if (!this.isReady) {
-            this.mixEntropy(this.pool, this.getAssembledEntropy());
-            this.isReady = true;
-        }
         const INIT_B = 0x8b51f9dd | 0;
         const MULT_B = 0x58f38ded | 0;
         const state = new Int32Array(nWords);
@@ -158,22 +158,26 @@ class SeedSequence32 {
     }
     /**
      * This is used for creating independent streams in Monte Carlo simulations.
-     * @param nChildren - the desired number of independent streams
+     * @param nChildren - the desired number of independent streams, must be a whole number
      * @returns - an array of children (of the same class), of size nChildren
      */
     spawn(nChildren) {
+        if (!Number.isInteger(nChildren) || nChildren < 1)
+            throw Error("SeedSequence32 spawn method must be called with a whole number.");
         nChildren |= 0;
-        const oldLen = this.spawnKey.length | 0;
         const seqs = Array(nChildren);
-        for (let i = 0 | 0; i < nChildren; i++) {
-            const seq = new SeedSequence32(this.entropy, this.poolSize, this);
-            if (oldLen > 0)
-                seq.spawnKey.set(this.spawnKey);
-            seq.spawnKey[oldLen] = (i + this.nChildrenSpawned) | 0;
-            seqs[i | 0] = seq;
-        }
+        const nChildrenSpawned = this.nChildrenSpawned;
         this.nChildrenSpawned += nChildren | 0;
-        return seqs;
+        return (index) => {
+            if (seqs[index] === undefined)
+                seqs[index] = new SeedSequence32({
+                    parent: this,
+                    nChildrenSpawned: nChildrenSpawned,
+                    childIndex: index,
+                    CONFIG_TYPE: "CHILD",
+                });
+            return seqs[index];
+        };
     }
 }
 //# sourceMappingURL=SeedSequence32.js.map
