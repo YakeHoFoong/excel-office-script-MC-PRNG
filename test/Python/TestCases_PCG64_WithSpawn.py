@@ -18,7 +18,7 @@ TEST_ENTROPY = [int("b76a074c", 16), int("23c70376", 16), int("7710e1d7", 16), i
 
 num_children = 10
 pool_size = 4  # 4 is default
-samples_per_child = 100
+samples_per_child = 1000
 sg = SeedSequence(TEST_ENTROPY, pool_size=pool_size)
 dist_type = DistributionType.STANDARD_NORMAL  # change to UNIT_UNIFORM for testing random variable in [0, 1)
 

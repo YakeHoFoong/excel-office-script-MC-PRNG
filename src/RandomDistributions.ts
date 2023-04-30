@@ -480,8 +480,8 @@ class RandomDistributions {
         const condition: boolean = rabs.isBit9fromRightSet();
         for (;;) {
           /* Switch to 1.0 - U to avoid log(0.0), see GH 13361 */
-          xx = -zigguratNorInvR * Math.log1p(this.randomUnit());
-          yy = -Math.log1p(this.randomUnit());
+          xx = -zigguratNorInvR * Math.log1p(-this.randomUnit());
+          yy = -Math.log1p(-this.randomUnit());
           if (yy + yy > xx * xx) return condition ? -(zigguratNorR + xx) : zigguratNorR + xx;
         }
       } else {
