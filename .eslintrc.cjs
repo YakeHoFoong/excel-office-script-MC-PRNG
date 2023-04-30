@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+// SPDX-License-Identifier: MIT
+
 module.exports =  {
     plugins: [
         "@typescript-eslint/eslint-plugin",

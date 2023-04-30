@@ -8,11 +8,14 @@ import { PCG64DXSM } from "../PCG64DXSM.js";
 import { JobSpec, JobResult } from "./functions-worker.js";
 
 // eslint-disable-next-line no-undef
-const g_numLogicalCores: number = navigator.hardwareConcurrency;
+const g_numLogicalCores: number = window.navigator.hardwareConcurrency;
 // set number of workers to half the number of logical cores
 const g_numWorkers: number = Math.ceil(g_numLogicalCores * 0.5);
 const g_webworkers: Worker[] = new Array<Worker>(g_numWorkers);
 
+/**
+ * The function to process messages (results) from workers is defined inside here.
+ */
 function getOrCreateWebWorker(streamNumber: number): Worker {
   const index = (streamNumber - 1) % g_numWorkers;
   if (g_webworkers[index]) {
@@ -24,32 +27,21 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
   webWorker.addEventListener("message", function (event) {
     const jobResult: JobResult = event.data;
 
-    if (!g_mapPreCalc.has(jobResult.batchKey)) throw Error("Worker results returned for unknown job.");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const simBatchInfo: SimBatchInfo = g_mapPreCalc.get(jobResult.batchKey)!;
-
-    const streamNumber: number = jobResult.streamNumber;
-    if (!simBatchInfo.mapSimNumToSimInfo.has(streamNumber))
-      throw Error("Worker results returned for unknown stream number of job.");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const simInfo: SimInfo = simBatchInfo.mapSimNumToSimInfo.get(jobResult.streamNumber)!;
-
-    // now close all the promises, if any, or save results if none
-    simInfo.isResultReady = true;
-    if (simInfo.promises.length == 0) {
-      simInfo.result = jobResult.result;
-    } else {
-      const isError: boolean = typeof jobResult.result == "string";
-      let i = 0;
-      while (i < simInfo.promises.length) {
-        if (simInfo.promises[i].done) delete simInfo.promises[i];
-        else i++;
-      }
-      for (const p of simInfo.promises) {
-        if (isError) p.reject(new Error(jobResult.result as string));
-        else p.resolve(jobResult.result);
-      }
-    }
+    const simBatchInfo: SimBatchInfo | undefined = g_mapPreCalc.get(jobResult.batchKey);
+    if (simBatchInfo) {
+      const simInfo: SimInfo | undefined = simBatchInfo.mapSimNumToSimInfo.get(jobResult.streamNumber);
+      if (simInfo) {
+        // save results
+        simInfo.isResultReady = true;
+        simInfo.result = jobResult.result;
+        // now close all the promises, if any
+        const isError: boolean = typeof jobResult.result == "string";
+        for (const p of simInfo.promises) {
+          if (isError) p.reject(new Error(jobResult.result as string));
+          else p.resolve(jobResult.result);
+        }
+      } else throw Error("Worker results returned for unknown stream number of job.");
+    } else throw Error("Worker results returned for unknown job batch.");
   });
 
   g_webworkers[index] = webWorker;
@@ -88,7 +80,6 @@ class SimInfo {
 interface CalcPromise {
   resolve: (a: number[][] | string) => void;
   reject: (a: Error) => void;
-  done: boolean;
 }
 
 /**
@@ -181,24 +172,32 @@ export async function testRandomStandardNormal(
   let myPromise: CalcPromise;
 
   invocation.onCanceled = () => {
-    myPromise.done = true;
+    const simInfo: SimInfo | undefined = batchInfo.mapSimNumToSimInfo.get(streamNumber);
+    if (simInfo) {
+      let i = 0;
+      while (i < simInfo.promises.length) {
+        if (simInfo.promises[i] == myPromise) delete simInfo.promises[i];
+        else i++;
+      }
+    }
     myPromise.reject(Error("User cancelled"));
+    // kill all workers in case user canceled because system is unresponsive
+    for (const w of g_webworkers) w.terminate();
   };
 
   // now deal with current requested calculation
-  if (batchInfo.mapSimNumToSimInfo.has(streamNumber)) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const simInfo: SimInfo = batchInfo.mapSimNumToSimInfo.get(streamNumber)!;
+  const simInfo: SimInfo | undefined = batchInfo.mapSimNumToSimInfo.get(streamNumber);
+  if (simInfo) {
     if (simInfo.isResultReady) return simInfo.result;
     else {
       return new Promise((resolve, reject) => {
-        myPromise = { resolve: resolve, reject: reject, done: false };
+        myPromise = { resolve: resolve, reject: reject };
         simInfo.promises.push(myPromise);
       });
     }
   } else {
     return new Promise((resolve, reject) => {
-      myPromise = { resolve: resolve, reject: reject, done: false };
+      myPromise = { resolve: resolve, reject: reject };
       addSimCalc(streamNumber, myPromise);
     });
   }

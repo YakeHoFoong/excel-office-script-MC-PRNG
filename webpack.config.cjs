@@ -1,4 +1,5 @@
-/* eslint-disable no-undef */
+// SPDX-FileCopyrightText: © 2023 Yake Ho Foong
+// SPDX-License-Identifier: MIT
 
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
