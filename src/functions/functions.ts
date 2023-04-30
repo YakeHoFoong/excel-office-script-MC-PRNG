@@ -40,10 +40,13 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
       simInfo.result = jobResult.result;
     } else {
       const isError: boolean = typeof jobResult.result == "string";
+      let i = 0;
+      while (i < simInfo.promises.length) {
+        if (simInfo.promises[i].done) delete simInfo.promises[i];
+        else i++;
+      }
       for (const p of simInfo.promises) {
-        if (isError) { // @ts-ignore
-          p.reject(new Error(jobResult.result));
-        }
+        if (isError) p.reject(new Error(jobResult.result as string));
         else p.resolve(jobResult.result);
       }
     }
@@ -54,11 +57,11 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
 }
 
 /**
- * Map of string of tuple (seed, total number of simulations,number of rows, number of columns) -\>
- * SimBatchInfo, which in turn contains a function that maps the simulation number to the sequence32 seeds,
- * and a map that maps the stream number to the sim info object.
- * Map of stream number -\> object of results if ready or blank if still being calculated by some worker,
- * array of resolves, array of rejects,
+ * Map of string of tuple (seed, total number of simulations, number of rows, number of columns) -\>
+ * {@link SimBatchInfo} object, which in turn contains a function that maps the stream number
+ * to the {@link SeedSequence32} object for the given stream number,
+ * and a map that maps the stream number to the {@link SimInfo} object.
+ * The term ***sim*** is used synonymously with ***stream***.
  */
 const g_mapPreCalc: Map<string, SimBatchInfo> = new Map<string, SimBatchInfo>();
 
@@ -85,6 +88,7 @@ class SimInfo {
 interface CalcPromise {
   resolve: (a: number[][] | string) => void;
   reject: (a: Error) => void;
+  done: boolean;
 }
 
 /**
@@ -93,8 +97,8 @@ interface CalcPromise {
  * @requiresAddress
  * @cancelable
  * @param seed Seed for the random number generator
- * @param streamNumber The stream number of current function call, usually the stochastic scenario/path of the current TABLE loop
- * @param numStreams: The total number of streams, usually the total number of stochastic scenarios/paths
+ * @param streamNumber The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
+ * @param numStreams: The total number of streams, usually the total number of stochastic simulations/scenarios/paths
  * @param numRows Number of rows of output
  * @param numColumns Number of columns of output
  * @param invocation Custom function handler
@@ -109,21 +113,19 @@ export async function testRandomStandardNormal(
   invocation: CustomFunctions.CancelableInvocation
 ): Promise<number[][] | string> {
   if (!Number.isInteger(numStreams) || numStreams < 1)
-    return "Parameter numStreams must be called with a whole number.";
+    return "Parameter numStreams must be a whole number.";
   if (!Number.isInteger(streamNumber) || streamNumber < 1)
-    return "Parameter streamNumber must be called with a whole number.";
+    return "Parameter streamNumber must be a whole number.";
   if (streamNumber > numStreams) return "Parameter streamNumber must be no larger than parameter numStreams.";
-  if (!Number.isInteger(numRows) || numRows < 1) return "Parameter numRows must be called with a whole number.";
+  if (!Number.isInteger(numRows) || numRows < 1) return "Parameter numRows must be a whole number.";
   if (!Number.isInteger(numColumns) || numColumns < 1)
-    return "Parameter numColumns must be called with a whole number.";
+    return "Parameter numColumns must be a whole number.";
 
-  // convert 64-bit floating point number to 2 signed 32-bit integers
-  // use DataView class so that this is platform-independent, i.e., do not rely on system's endianness
+  // convert the seed from 64-bit floating point number to 2 signed 32-bit integers
+  // using DataView class so that this is platform-independent, i.e., do not rely on system's endianness
   const dv64bits = new DataView(new ArrayBuffer(8));
-  const entropy = new Int32Array(2);
   dv64bits.setFloat64(0, seed);
-  entropy[0] = dv64bits.getInt32(0);
-  entropy[1] = dv64bits.getInt32(4);
+  const entropy = new Int32Array([dv64bits.getInt32(0), dv64bits.getInt32(4)]);
 
   // now create the string keys for the 2 maps
   // we need to use strings because JavaScript does not have built-in support for tuples as keys
@@ -144,32 +146,43 @@ export async function testRandomStandardNormal(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const batchInfo: SimBatchInfo = g_mapPreCalc.get(batchKey)!;
 
-  // setup pre-calculations
-  for (let i = 1; i < g_numWorkers; i++) {
-    const futureStreamNum = streamNumber + i;
-    if (!batchInfo.mapSimNumToSimInfo.has(futureStreamNum)) {
-      const worker: Worker = getOrCreateWebWorker(futureStreamNum);
-      const jobSpec: JobSpec = {
-        batchKey: batchKey,
-        streamNumber: futureStreamNum,
-        numRows: numRows,
-        numColumns: numColumns,
-        seqSeeds: batchInfo.fnSimNumToSeq(futureStreamNum).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS),
-      };
-      const simInfo: SimInfo = new SimInfo();
-      batchInfo.mapSimNumToSimInfo.set(futureStreamNum, simInfo);
-      worker.postMessage(jobSpec);
-    }
+  // define a local function for adding a simulation number to the calculations
+  function addSimCalc(sNum: number, prom?: CalcPromise): void {
+    const worker: Worker = getOrCreateWebWorker(sNum);
+    const jobSpec: JobSpec = {
+      batchKey: batchKey,
+      streamNumber: sNum,
+      numRows: numRows,
+      numColumns: numColumns,
+      seqSeeds: batchInfo.fnSimNumToSeq(sNum).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS),
+    };
+    const simInfo: SimInfo = new SimInfo();
+    batchInfo.mapSimNumToSimInfo.set(sNum, simInfo);
+    if (prom) simInfo.promises.push(prom);
+    worker.postMessage(jobSpec);
   }
 
+  // setup pre-calculations for (g_numWorkers - 1) simulation numbers ahead
+  let i = 1;
+  while (i < g_numWorkers) {
+    const futureStreamNum = streamNumber + i;
+    if (!batchInfo.mapSimNumToSimInfo.has(futureStreamNum)) addSimCalc(futureStreamNum);
+    i++;
+  }
+
+  // run a clean up of the pre-calc history
+  const maxSave: number = g_numWorkers * 3; // subjective choice
+  for (const k of batchInfo.mapSimNumToSimInfo.keys()) {
+    if (batchInfo.mapSimNumToSimInfo.size <= maxSave) break;
+    if (batchInfo.mapSimNumToSimInfo.get(k)?.promises.length == 0) batchInfo.mapSimNumToSimInfo.delete(k);
+  }
+
+  // this is needed for the user cancellation below
+  let myPromise: CalcPromise;
+
   invocation.onCanceled = () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const simInfo: SimInfo = batchInfo.mapSimNumToSimInfo.get(streamNumber)!;
-    while (simInfo.promises.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const p: CalcPromise = simInfo.promises.pop()!;
-      p.reject(Error("User cancelled"));
-    }
+    myPromise.done = true;
+    myPromise.reject(Error("User cancelled"));
   };
 
   // now deal with current requested calculation
@@ -179,23 +192,14 @@ export async function testRandomStandardNormal(
     if (simInfo.isResultReady) return simInfo.result;
     else {
       return new Promise((resolve, reject) => {
-        simInfo.promises.push({ resolve: resolve, reject: reject });
+        myPromise = { resolve: resolve, reject: reject, done: false };
+        simInfo.promises.push(myPromise);
       });
     }
   } else {
-    const simInfo: SimInfo = new SimInfo();
-    batchInfo.mapSimNumToSimInfo.set(streamNumber, simInfo);
     return new Promise((resolve, reject) => {
-      const worker: Worker = getOrCreateWebWorker(streamNumber);
-      const jobSpec: JobSpec = {
-        batchKey: batchKey,
-        streamNumber: streamNumber,
-        numRows: numRows,
-        numColumns: numColumns,
-        seqSeeds: batchInfo.fnSimNumToSeq(streamNumber).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS),
-      };
-      simInfo.promises.push({ resolve: resolve, reject: reject });
-      worker.postMessage(jobSpec);
+      myPromise = { resolve: resolve, reject: reject, done: false };
+      addSimCalc(streamNumber, myPromise);
     });
   }
 }
