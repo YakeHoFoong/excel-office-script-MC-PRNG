@@ -15,10 +15,14 @@ const enum RandomDistribution {
 interface JobResult {
   batchKey: string;
   streamNumber: number;
+  numRows: number;
+  numColumns: number;
   result: number[][];
+  buffer: ArrayBuffer; // test
 }
 
 interface JobSpec {
+  useTransfer: boolean;
   distribution: RandomDistribution;
   batchKey: string;
   streamNumber: number;
@@ -32,18 +36,28 @@ self.addEventListener("message", function (event) {
   const jobSpec: JobSpec = event.data;
   const bitGen = new PCG64DXSM(jobSpec.seqSeeds);
   const randDist = new RandomDistributions(bitGen);
-  const result = new Array<number[]>(jobSpec.numRows);
+  const result = jobSpec.useTransfer ? [] : new Array<number[]>(jobSpec.numRows);
+  const numElements = jobSpec.useTransfer ? jobSpec.numRows * jobSpec.numColumns : 0;
+  const floatArr = new Float64Array(numElements);
   switch (jobSpec.distribution) {
     case RandomDistribution.StandardNormal:
-      for (let r = 0; r < jobSpec.numRows; r++) {
-        result[r] = new Array<number>(jobSpec.numColumns);
-        for (let c = 0; c < jobSpec.numColumns; c++) result[r][c] = randDist.randomStandardNormal();
+      if (jobSpec.useTransfer) {
+        for (let i = 0; i < numElements; i++) floatArr[i] = randDist.randomStandardNormal();
+      } else {
+        for (let r = 0; r < jobSpec.numRows; r++) {
+          result[r] = new Array<number>(jobSpec.numColumns);
+          for (let c = 0; c < jobSpec.numColumns; c++) result[r][c] = randDist.randomStandardNormal();
+        }
       }
       break;
     case RandomDistribution.UnitUniform:
-      for (let r = 0; r < jobSpec.numRows; r++) {
-        result[r] = new Array<number>(jobSpec.numColumns);
-        for (let c = 0; c < jobSpec.numColumns; c++) result[r][c] = randDist.randomUnit();
+      if (jobSpec.useTransfer) {
+        for (let i = 0; i < numElements; i++) floatArr[i] = randDist.randomUnit();
+      } else {
+        for (let r = 0; r < jobSpec.numRows; r++) {
+          result[r] = new Array<number>(jobSpec.numColumns);
+          for (let c = 0; c < jobSpec.numColumns; c++) result[r][c] = randDist.randomUnit();
+        }
       }
       break;
     default:
@@ -52,8 +66,12 @@ self.addEventListener("message", function (event) {
   const message: JobResult = {
     batchKey: jobSpec.batchKey,
     streamNumber: jobSpec.streamNumber,
+    numRows: jobSpec.numRows,
+    numColumns: jobSpec.numColumns,
     result: result,
+    buffer: floatArr.buffer,
   };
+  // @ts-ignore
   // eslint-disable-next-line no-undef
-  postMessage(message);
+  self.postMessage(message, [floatArr.buffer]);
 });

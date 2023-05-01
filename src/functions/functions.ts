@@ -33,9 +33,16 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
       if (simInfo) {
         // save results
         simInfo.isResultReady = true;
-        simInfo.result = jobResult.result;
+        if (jobResult.result.length === 0) {
+          const numCols = jobResult.numColumns;
+          const numBytesPerRow = numCols * 8;
+          let i = 0;
+          simInfo.result = new Array<number[]>(jobResult.numRows);
+          for (let r = 0; r < jobResult.numRows; r++, i += numBytesPerRow)
+            simInfo.result[r] = Array.from(new Float64Array(jobResult.buffer, i, numCols));
+        } else simInfo.result = jobResult.result;
         // now close all the promises, if any
-        for (const p of simInfo.promises) p.resolve(jobResult.result);
+        for (const p of simInfo.promises) p.resolve(simInfo.result);
         // now clear all promises
         simInfo.promises.length = 0;
       } else throw Error("Worker results returned for unknown stream number of job.");
@@ -83,6 +90,7 @@ interface CalcPromise {
 /**
  * @customfunction RANDOM.UNIT.UNIFORM
  * @cancelable
+ * @param useTransfer - True if wish to use the transfer approach in web workers
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
  * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
@@ -93,6 +101,7 @@ interface CalcPromise {
  * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
  */
 export async function randomUnitUniform(
+  useTransfer: boolean,
   seed: number,
   streamNumber: number,
   numStreams: number,
@@ -100,12 +109,22 @@ export async function randomUnitUniform(
   numColumns: number,
   invocation: CustomFunctions.CancelableInvocation
 ): Promise<number[][]> {
-  return randomNumber(RandomDistribution.UnitUniform, seed, streamNumber, numStreams, numRows, numColumns, invocation);
+  return randomNumber(
+    RandomDistribution.UnitUniform,
+    useTransfer,
+    seed,
+    streamNumber,
+    numStreams,
+    numRows,
+    numColumns,
+    invocation
+  );
 }
 
 /**
  * @customfunction RANDOM.STANDARD.NORMAL
  * @cancelable
+ * @param useTransfer - True if wish to use the transfer approach in web workers
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
  * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
@@ -116,6 +135,7 @@ export async function randomUnitUniform(
  * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
  */
 export async function randomStandardNormal(
+  useTransfer: boolean,
   seed: number,
   streamNumber: number,
   numStreams: number,
@@ -125,6 +145,7 @@ export async function randomStandardNormal(
 ): Promise<number[][]> {
   return randomNumber(
     RandomDistribution.StandardNormal,
+    useTransfer,
     seed,
     streamNumber,
     numStreams,
@@ -136,6 +157,7 @@ export async function randomStandardNormal(
 
 /**
  * @param distribution - The random distribution type, currently only Standard Normal and Unit Uniform available
+ * @param useTransfer - True if wish to use the transfer approach in web workers
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
  * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
@@ -147,6 +169,7 @@ export async function randomStandardNormal(
  */
 async function randomNumber(
   distribution: RandomDistribution,
+  useTransfer: boolean,
   seed: number,
   streamNumber: number,
   numStreams: number,
@@ -191,6 +214,7 @@ async function randomNumber(
   function addSimCalc(sNum: number, prom?: CalcPromise): void {
     const worker: Worker = getOrCreateWebWorker(sNum);
     const jobSpec: JobSpec = {
+      useTransfer: useTransfer,
       distribution: distribution,
       batchKey: batchKey,
       streamNumber: sNum,
