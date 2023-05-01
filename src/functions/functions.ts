@@ -228,9 +228,9 @@ async function randomNumber(
 
   // run a clean up of the pre-calc history
   const maxSave: number = g_numWorkers * 3; // subjective choice
-  for (const k of batchInfo.mapSimNumToSimInfo.keys()) {
+  for (const [k, v] of batchInfo.mapSimNumToSimInfo) {
     if (batchInfo.mapSimNumToSimInfo.size <= maxSave) break;
-    if (batchInfo.mapSimNumToSimInfo.get(k)?.promises.length == 0) batchInfo.mapSimNumToSimInfo.delete(k);
+    if (v.promises.length === 0) batchInfo.mapSimNumToSimInfo.delete(k);
   }
 
   // this is needed for the user cancellation below
@@ -241,7 +241,7 @@ async function randomNumber(
     if (simInfo) {
       let i = 0;
       while (i < simInfo.promises.length) {
-        if (simInfo.promises[i] == myPromise) delete simInfo.promises[i];
+        if (simInfo.promises[i] === myPromise) simInfo.promises.splice(i, 1);
         else i++;
       }
     }
