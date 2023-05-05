@@ -52,10 +52,10 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
 }
 
 /**
- * Map of string of tuple (seed, total number of simulations, number of rows, number of columns) -\>
+ * {@link Map} of string of tuple (seed, total number of simulations, number of rows, number of columns) -\>
  * {@link SimBatchInfo} object, which in turn contains a function that maps the stream number
  * to the {@link SeedSequence32} object for the given stream number,
- * and a map that maps the stream number to the {@link SimInfo} object.
+ * and a {@link Map} that maps the stream number to the {@link SimInfo} object.
  * The term ***sim*** is used synonymously with ***stream***.
  */
 const g_mapPreCalc: Map<string, SimBatchInfo> = new Map<string, SimBatchInfo>();
@@ -88,6 +88,7 @@ interface CalcPromise {
 /**
  * @customfunction RANDOM.UNIT.UNIFORM
  * @cancelable
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
  * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
@@ -119,6 +120,7 @@ export async function randomUnitUniform(
 /**
  * @customfunction RANDOM.STANDARD.NORMAL
  * @cancelable
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
  * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
@@ -268,102 +270,33 @@ async function randomNumber(
   }
 }
 
-/* global clearInterval, console, CustomFunctions, setInterval */
-
 /**
- * Adds two numbers.
- * @customfunction
- * @param first - First number
- * @param second - Second number
- * @returns The sum of the two numbers.
+ * {@link Map} of memoized results: cell address -\> 2D array of numbers.
+ * Note that add-ins (and hence this variable) have a single instance per workbook. Also, the cell address
+ * string in the invocation parameter of CustomFunctions include the sheet name. Hence, that can be used
+ * as a unique key in the {@link Map} object here.
  */
-export function add(first: number, second: number): number {
-  return first + second;
-}
+const g_mapMemoization: Map<string, number[][]> = new Map<string, number[][]>();
 
 /**
- * Adds two numbers.
- * @customfunction
- * @param first - First number
- * @param second - Second number
- * @returns The sum of the two numbers.
- */
-export async function blah(first: number, second: number): Promise<number[][]> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  return new Promise((resolve) => {
-    const result: number[][] = new Array<number[]>(1000);
-    for (let r = 0; r < 1000; r++) {
-      result[r] = new Array<number>(30);
-      for (let c = 0; c < 30; c++) {
-        result[r][c] = first + second;
-      }
-    }
-    // eslint-disable-next-line no-undef
-    window.setTimeout(() => resolve(result), 3000);
-  });
-  //return [[first, second], [second, first], [first, first]];
-}
-
-/**
- * Displays the current time once a second.
- * @customfunction
+ * @customfunction MEMOIZE
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
+ * @returns A promise containing the values
+ * @param store - if FALSE, then save parameter values, else retrieve values from memoization map
+ * @param values - saved if parameter store is TRUE, else ignored
  * @param invocation - Custom function handler
+ * @requiresAddress
  */
-export function clock(invocation: CustomFunctions.StreamingInvocation<string>): void {
-  const timer = setInterval(() => {
-    const time = currentTime();
-    invocation.setResult(time);
-  }, 1000);
-
-  invocation.onCanceled = () => {
-    clearInterval(timer);
-  };
-}
-
-/**
- * Returns the current time.
- * @returns String with the current time formatted for the current locale.
- */
-export function currentTime(): string {
-  return new Date().toLocaleTimeString();
-}
-
-/**
- * Increments a value once a second.
- * @customfunction
- * @param incrementBy - Amount to increment
- * @param invocation - Custom function handler
- */
-export function increment(incrementBy: number, invocation: CustomFunctions.StreamingInvocation<number>): void {
-  let result = 0;
-  const timer = setInterval(() => {
-    result += incrementBy;
-    invocation.setResult(result);
-  }, 1000);
-
-  invocation.onCanceled = () => {
-    clearInterval(timer);
-  };
-}
-
-/**
- * Writes a message to console.log().
- * @customfunction LOG
- * @param message - String to write.
- * @returns String to write.
- */
-export function logMessage(message: string): string {
-  console.log(message);
-
-  return message;
-}
-
-/**
- * Writes a message to console.log().
- * @customfunction NUMBER.OF.LOGICAL.CORES
- * @param message - String to write.
- * @returns String to write.
- */
-export function numLogicalCores(): number {
-  return g_numLogicalCores;
+export async function memoize(
+  store: boolean,
+  values: number[][],
+  invocation: CustomFunctions.Invocation
+): Promise<number[][]> {
+  if (invocation.address === undefined) throw Error("MEMOIZE called with invalid cell address information.");
+  else {
+    if (store) g_mapMemoization.set(invocation.address, values);
+    const results = g_mapMemoization.get(invocation.address);
+    if (results === undefined) throw Error("MEMOIZE called to get numbers before storing numbers.");
+    else return results;
+  }
 }

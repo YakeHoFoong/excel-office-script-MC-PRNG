@@ -12,6 +12,15 @@
 export { int32toNumber, Uint64, Uint128 };
 
 /**
+ * System's endianness, needed for speed for the Uint64 class.
+ */
+const isLittleEnding: boolean = new Uint16Array(new Uint32Array([0xffff0000]).buffer, 0, 1)[0] === 0;
+const index0 = isLittleEnding ? 0 : 1;
+const index1 = isLittleEnding ? 1 : 0;
+const index2 = isLittleEnding ? 2 : 3;
+const index3 = isLittleEnding ? 3 : 2;
+
+/**
  * This function is used only in unit tests.
  * It is to deal with the leftmost bit being treated as a special sign bit.
  * @param x - a signed 32-bit integer to be treated as unsigned integer
@@ -30,14 +39,12 @@ function int32toNumber(x: number): number {
  * including module 2^64. This is implemented for speed, over **bigint** type.
  */
 class Uint64 {
-  /**
-   * @internal
-   * Do **NOT** use this outside of this module.
-   */
   readonly values: Int32Array;
+  readonly values16: Uint16Array;
 
   constructor() {
-    this.values = new Int32Array(4);
+    this.values = new Int32Array(2);
+    this.values16 = new Uint16Array(this.values.buffer);
   }
 
   /**
@@ -46,7 +53,8 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   copyFrom(num: Uint64): void {
-    this.values.set(num.values);
+    this.values[0] = num.values[0];
+    this.values[1] = num.values[1];
   }
 
   /**
@@ -58,12 +66,8 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   from32bits(num1: number, num2: number): void {
-    const mask = 0xffff;
-    const values: Int32Array = this.values;
-    values[0] = num1 & mask;
-    values[1] = num1 >>> 16;
-    values[2] = num2 & mask;
-    values[3] = num2 >>> 16;
+    this.values[0] = num1 | 0;
+    this.values[1] = num2 | 0;
   }
 
   /**
@@ -72,10 +76,8 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   fromBigint(x: bigint): void {
-    for (let i = 0; i < 4; i++) {
-      this.values[i] = Number(x & 0xffffn);
-      x >>= 16n;
-    }
+    this.values[0] = Number(x & 0xffffffffn) | 0;
+    this.values[1] = Number((x >> 32n) & 0xffffffffn) | 0;
   }
 
   /**
@@ -84,12 +86,101 @@ class Uint64 {
    * this object itself is unchanged.
    */
   toBigInt(): bigint {
-    let result = 0n;
-    const arr: Int32Array = this.values;
-    for (let i = 0; i < arr.length; i++) {
-      result |= BigInt(int32toNumber(arr[i])) << BigInt(16 * i);
+    return (BigInt(int32toNumber(this.values[1])) << 32n) | BigInt(int32toNumber(this.values[0]));
+  }
+
+  private inplace64LeftRotateOrShift(isShift: boolean, numBits: number): void {
+    numBits |= 0;
+
+    // break down numbBits into numWords * 32 + numRemBits, where 0 <= numWords < 2 and 0 <= numRemBits < 31
+    const numWords: number = numBits >>> 5; // number of 32-bit words
+    const numRemBits: number = numBits & 31; // remaining bits after rotating words above; & 31 is the same as % 32
+
+    // assume below that 0 <= numWords < 2, since we assumed that 0 <= numBits < 64
+    const newLo: number = numWords > 0 ? (isShift ? 0 : this.values[1]) : this.values[0];
+    const newHi: number = numWords > 0 ? this.values[0] : this.values[1];
+
+    if (numRemBits === 0) {
+      this.values[0] = newLo;
+      this.values[1] = newHi;
+    } else {
+      const numWrapBits: number = 32 - numRemBits;
+      // no need for the & 0xffffffff mask, bitwise operations forces the numbers to be 32-bit
+      this.values[0] = newLo << numRemBits;
+      if (!isShift) this.values[0] |= newHi >>> numWrapBits;
+      // no need for the & 0xffffffff mask, bitwise operations forces the numbers to be 32-bit
+      this.values[1] = (newHi << numRemBits) | (newLo >>> numWrapBits);
     }
-    return result;
+  }
+
+  /**
+   * Left shifts the value of this object by n bits.
+   * @numBits - the number of bits to shift left, must be a non-negative integer less than 64
+   * @returns - nothing; object's state/value is updated.
+   */
+  inplace64LeftShift(numBits: number): void {
+    this.inplace64LeftRotateOrShift(true, numBits);
+  }
+
+  /**
+   * Rotates left the value of this object by n bits.
+   * @numBits - the number of bits to rotate left, must be a non-negative integer less than 64
+   * @returns - nothing; object's state/value is updated.
+   */
+  inplace64RotateLeft(numBits: number): void {
+    this.inplace64LeftRotateOrShift(false, numBits);
+  }
+
+  /**
+   * Add modulo 2^64.
+   * @num2 - the number to be added to this number.
+   * @returns - nothing; object's state/value is updated.
+   *
+   * @remarks
+   * Two's complements arithmetic, carry/overflow:
+   *
+   * if x \> 0 and y \> 0, x + y cannot overflow
+   *
+   * if x \< 0 and y \< 0, x + y must overflow
+   *
+   * if x \< 0 and y \> 0, then if (-x) \> y, x + y no overflow, else
+   * x + y = 2\^n - (-x) + y = 2\^n + [y - (-x)]
+   * =\> no overflow if (-x) \> y, else overflow
+   */
+  inplace64ModAdd(num2: Uint64): void {
+    const lo1: number = this.values[0];
+    const lo2: number = num2.values[0];
+    this.values[0] = (lo1 + lo2) | 0;
+    this.values[1] += lo1 < 0 ? (lo2 < 0 ? 1 : -lo1 > lo2 ? 0 : 1) : lo2 > 0 ? 0 : -lo2 > lo1 ? 0 : 1;
+    this.values[1] += num2.values[1];
+  }
+
+  /**
+   * Xor this number with another number, in place.
+   * @num2 - the number to be Xor-ed to this number.
+   * @returns - nothing; object's state/value is updated.
+   */
+  inplaceXorWith(num2: Uint64): void {
+    this.values[0] ^= num2.values[0];
+    this.values[1] ^= num2.values[1];
+  }
+
+  /**
+   * @returns - the leftmost 53 bits of this object's value as a number type.
+   * Other 11 bits to the right are ignored. Object's value is unchanged.
+   */
+  leftmost53bits(): number {
+    // * 0x200000 is 32 - 11 = 21 bits left shift
+    return int32toNumber(this.values[1]) * 0x200000 + (this.values[0] >>> 11);
+  }
+
+  /**
+   * @returns - ***true*** if the Nth bit from the right is set, else ***false***.
+   * N must be less than 64
+   */
+  isBitNfromRightSet(n: number): boolean {
+    if (n <= 32) return ((this.values[0] >>> (n - 1)) & 1) !== 0;
+    else return ((this.values[1] >>> (n - 33)) & 1) !== 0;
   }
 
   /**
@@ -112,8 +203,8 @@ class Uint64 {
    *            b3 x a0
    */
   inplaceModMult64x64(int2: Uint64): void {
-    const num1: Int32Array = this.values;
-    const num2: Int32Array = int2.values;
+    const num1: Uint16Array = this.values16;
+    const num2: Uint16Array = int2.values16;
 
     const mask: number = 0xffff | 0;
 
@@ -121,38 +212,40 @@ class Uint64 {
     let val1;
     let val2;
 
-    val = Math.imul(num2[0] | 0, num1[0] | 0) | 0;
+    val = Math.imul(num2[index0] | 0, num1[index0] | 0) | 0;
     const result0: number = val & mask;
     val1 = val >>> 16;
 
-    val = Math.imul(num2[0] | 0, num1[1] | 0) | 0;
+    val = Math.imul(num2[index0] | 0, num1[index1] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2[1] | 0, num1[0] | 0) | 0;
+    val = Math.imul(num2[index1] | 0, num1[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result1: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
     // leftmost, due to modulo, just let the product overflow
-    val = (num1[3] << 16) | num1[2];
-    val1 += Math.imul(num2[0] | 0, val | 0) | 0;
-    val = (num1[2] << 16) | num1[1];
-    val1 += Math.imul(num2[1] | 0, val | 0) | 0;
-    val = (num1[1] << 16) | num1[0];
-    val1 += Math.imul(num2[2] | 0, val | 0) | 0;
+    // val = (num1[index3] << 16) | num1[index2];
+    val = this.values[1];
+    val1 += Math.imul(num2[index0] | 0, val | 0) | 0;
+    val = (num1[index2] << 16) | num1[index1];
+    val1 += Math.imul(num2[index1] | 0, val | 0) | 0;
+    // val = (num1[index1] << 16) | num1[index0];
+    val = this.values[0];
+    val1 += Math.imul(num2[index2] | 0, val | 0) | 0;
 
     const result2: number = val1 & mask;
     val1 >>>= 16;
 
     // final one, special
-    val1 += Math.imul(num2[3] | 0, num1[0] | 0);
+    val1 += Math.imul(num2[index3] | 0, num1[index0] | 0);
 
     // in place results
-    num1[0] = result0 | 0;
-    num1[1] = result1 | 0;
-    num1[2] = result2 | 0;
-    num1[3] = val1 & mask;
+    num1[index0] = result0 | 0;
+    num1[index1] = result1 | 0;
+    num1[index2] = result2 | 0;
+    num1[index3] = val1 & mask;
   }
 
   /**
@@ -161,13 +254,9 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   inplace64RightShift32Xor(): void {
-    const num: Int32Array = this.values;
-
-    num[0] ^= num[2];
-    num[1] ^= num[3];
+    this.values[0] ^= this.values[1];
     // ^=0 is the same as no op
-    // num[2] ^= 0;
-    // num[3] ^= 0;
+    // this.values[1] ^= 0;
   }
 
   /**
@@ -176,13 +265,11 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   inplace64RightShift48Xor(): void {
-    const num: Int32Array = this.values;
-
-    num[0] ^= num[3];
+    this.values16[index0] ^= this.values16[index3];
     // ^=0 is the same as no op
-    // num[1] ^= 0;
-    // num[2] ^= 0;
-    // num[3] ^= 0;
+    // this.values16[index1] ^= 0;
+    // this.values16[index2] ^= 0;
+    // this.values16[index3] ^= 0;
   }
 
   /**
@@ -193,12 +280,8 @@ class Uint64 {
     const num: Int32Array = this.values;
 
     num[0] >>>= 9;
-    num[0] |= (num[1] & 0x1ff) << 7;
+    num[0] |= (num[1] & 0x1ff) << 23;
     num[1] >>>= 9;
-    num[1] |= (num[2] & 0x1ff) << 7;
-    num[2] >>>= 9;
-    num[2] |= (num[3] & 0x1ff) << 7;
-    num[3] >>>= 9;
   }
 
   /**
@@ -206,14 +289,7 @@ class Uint64 {
    * Other 12 bits to the left are ignored. Object's value is unchanged.
    */
   rightmost52bits(): number {
-    const vals: Int32Array = this.values;
-
-    // 16 + 8 = 24 bits
-    const loPart: number = vals[0] | ((vals[1] & 0xff) << 16);
-    // 8 + 16 + 4 = 28 bits
-    const hiPart: number = (vals[1] >>> 8) | (vals[2] << 8) | ((vals[3] & 0xf) << 24);
-
-    return hiPart * 0x1000000 + loPart;
+    return int32toNumber(this.values[1] & 0xfffff) * 0x100000000 + int32toNumber(this.values[0]);
   }
 
   /**
@@ -222,20 +298,6 @@ class Uint64 {
    */
   rightmostByte(): number {
     return this.values[0] & 0xff;
-  }
-
-  /**
-   * @returns - the leftmost 53 bits of this object's value as a number type.
-   * Other 11 bits to the right are ignored. Object's value is unchanged.
-   */
-  leftmost53bits(): number {
-    const vals: Int32Array = this.values;
-    // 5 + 16 + 8 = 29 bits
-    const loPart: number = (vals[0] >>> 11) | (vals[1] << 5) | ((vals[2] & 0xff) << 21);
-    // 8 + 16 = 24 bits
-    const hiPart: number = (vals[2] >>> 8) | (vals[3] << 8);
-
-    return hiPart * 0x20000000 + loPart;
   }
 
   /**
@@ -250,7 +312,7 @@ class Uint64 {
    * @returns - nothing; object's state/value is updated.
    */
   clearLeftmost12bits(): void {
-    this.values[3] &= 0xf;
+    this.values16[index3] &= 0xf;
   }
 
   /**
@@ -261,12 +323,6 @@ class Uint64 {
   isLessThan(int2: Uint64): boolean {
     const num1: Int32Array = this.values;
     const num2: Int32Array = int2.values;
-
-    if (num1[3] > num2[3]) return false;
-    if (num1[3] < num2[3]) return true;
-
-    if (num1[2] > num2[2]) return false;
-    if (num1[2] < num2[2]) return true;
 
     if (num1[1] > num2[1]) return false;
     if (num1[1] < num2[1]) return true;
@@ -317,6 +373,21 @@ class Uint128 {
   }
 
   /**
+   * This method is mainly used to create a 128-bit unsigned integer
+   * using the seeds generated by a SeedSequence object.
+   * @see {@link SeedSequence32}
+   * @param num1 - the first 32-bits i.e. lowest part
+   * @param num2 - the second 32-bits
+   * @param num3 - the third 32-bits
+   * @param num4 - the fourth 32-bits i.e. highest part
+   * @returns - nothing; object's state/value is updated.
+   */
+  from32bits(num1: number, num2: number, num3: number, num4: number): void {
+    this.low64.from32bits(num1, num2);
+    this.high64.from32bits(num3, num4);
+  }
+
+  /**
    * Takes another 64-bit integer, the parameter, and multiplies onto this object,
    * then applies modulo 2^128 on this object. Note that the parameter is 64-bits, not 128-bits.
    * @param int64 - the number to be multiplied with this object
@@ -357,99 +428,99 @@ class Uint128 {
     let val1: number;
     let val2: number;
 
-    const num128hi: Int32Array = this.high64.values;
-    const num128lo: Int32Array = this.low64.values;
-    const num64: Int32Array = int64.values;
+    const num128hi: Uint16Array = this.high64.values16;
+    const num128lo: Uint16Array = this.low64.values16;
+    const num64: Uint16Array = int64.values16;
 
-    val = Math.imul(num64[0] | 0, num128lo[0] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128lo[index0] | 0) | 0;
     const result0: number = val & mask;
     val1 = val >>> 16;
 
-    val = Math.imul(num64[0] | 0, num128lo[1] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num64[1] | 0, num128lo[0] | 0) | 0;
+    val = Math.imul(num64[index1] | 0, num128lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result1: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num64[0] | 0, num128lo[2] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num64[1] | 0, num128lo[1] | 0) | 0;
+    val = Math.imul(num64[index1] | 0, num128lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[2] | 0, num128lo[0] | 0) | 0;
+    val = Math.imul(num64[index2] | 0, num128lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result2: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num64[0] | 0, num128lo[3] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num64[1] | 0, num128lo[2] | 0) | 0;
+    val = Math.imul(num64[index1] | 0, num128lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[2] | 0, num128lo[1] | 0) | 0;
+    val = Math.imul(num64[index2] | 0, num128lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[3] | 0, num128lo[0] | 0) | 0;
+    val = Math.imul(num64[index3] | 0, num128lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result3: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num64[0] | 0, num128hi[0] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128hi[index0] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num64[1] | 0, num128lo[3] | 0) | 0;
+    val = Math.imul(num64[index1] | 0, num128lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[2] | 0, num128lo[2] | 0) | 0;
+    val = Math.imul(num64[index2] | 0, num128lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[3] | 0, num128lo[1] | 0) | 0;
+    val = Math.imul(num64[index3] | 0, num128lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result4: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num64[0] | 0, num128hi[1] | 0) | 0;
+    val = Math.imul(num64[index0] | 0, num128hi[index1] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num64[1] | 0, num128hi[0] | 0) | 0;
+    val = Math.imul(num64[index1] | 0, num128hi[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[2] | 0, num128lo[3] | 0) | 0;
+    val = Math.imul(num64[index2] | 0, num128lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num64[3] | 0, num128lo[2] | 0) | 0;
+    val = Math.imul(num64[index3] | 0, num128lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result5: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
     // leftmost, due to modulo, just let the product overflow
-    val = (num128hi[3] << 16) | num128hi[2];
+    val = this.high64.values[1]; // (num128hi[index3] << 16) | num128hi[index2];
     val1 += Math.imul(num64[0] | 0, val | 0) | 0;
-    val = (num128hi[2] << 16) | num128hi[1];
+    val = (num128hi[index2] << 16) | num128hi[index1];
     val1 += Math.imul(num64[1] | 0, val | 0) | 0;
-    val = (num128hi[1] << 16) | num128hi[0];
+    val = this.high64.values[0]; // (num128hi[index1] << 16) | num128hi[index0];
     val1 += Math.imul(num64[2] | 0, val | 0) | 0;
-    val = (num128hi[0] << 16) | num128lo[3];
+    val = (num128hi[index0] << 16) | num128lo[index3];
     val1 += Math.imul(num64[3] | 0, val | 0) | 0;
 
     // fill in the in place results
-    num128lo[0] = result0 | 0;
-    num128lo[1] = result1 | 0;
-    num128lo[2] = result2 | 0;
-    num128lo[3] = result3 | 0;
-    num128hi[0] = result4 | 0;
-    num128hi[1] = result5 | 0;
-    num128hi[2] = val1 & mask;
-    num128hi[3] = val1 >>> 16;
+    num128lo[index0] = result0 | 0;
+    num128lo[index1] = result1 | 0;
+    num128lo[index2] = result2 | 0;
+    num128lo[index3] = result3 | 0;
+    num128hi[index0] = result4 | 0;
+    num128hi[index1] = result5 | 0;
+    num128hi[index2] = val1 & mask;
+    num128hi[index3] = val1 >>> 16;
   }
 
   /**
@@ -500,122 +571,122 @@ class Uint128 {
     let val1: number;
     let val2: number;
 
-    const num1hi: Int32Array = this.high64.values;
-    const num1lo: Int32Array = this.low64.values;
-    const num2lo: Int32Array = int128.low64.values;
-    const num2hi: Int32Array = int128.high64.values;
+    const num1hi: Uint16Array = this.high64.values16;
+    const num1lo: Uint16Array = this.low64.values16;
+    const num2lo: Uint16Array = int128.low64.values16;
+    const num2hi: Uint16Array = int128.high64.values16;
 
-    val = Math.imul(num2lo[0] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1lo[index0] | 0) | 0;
     const result0: number = val & mask;
     val1 = val >>> 16;
 
-    val = Math.imul(num2lo[0] | 0, num1lo[1] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2lo[1] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2lo[index1] | 0, num1lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result1: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num2lo[0] | 0, num1lo[2] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2lo[1] | 0, num1lo[1] | 0) | 0;
+    val = Math.imul(num2lo[index1] | 0, num1lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[2] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2lo[index2] | 0, num1lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result2: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num2lo[0] | 0, num1lo[3] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2lo[1] | 0, num1lo[2] | 0) | 0;
+    val = Math.imul(num2lo[index1] | 0, num1lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[2] | 0, num1lo[1] | 0) | 0;
+    val = Math.imul(num2lo[index2] | 0, num1lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[3] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2lo[index3] | 0, num1lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result3: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num2lo[0] | 0, num1hi[0] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1hi[index0] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2lo[1] | 0, num1lo[3] | 0) | 0;
+    val = Math.imul(num2lo[index1] | 0, num1lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[2] | 0, num1lo[2] | 0) | 0;
+    val = Math.imul(num2lo[index2] | 0, num1lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[3] | 0, num1lo[1] | 0) | 0;
+    val = Math.imul(num2lo[index3] | 0, num1lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2hi[0] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2hi[index0] | 0, num1lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result4: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
-    val = Math.imul(num2lo[0] | 0, num1hi[1] | 0) | 0;
+    val = Math.imul(num2lo[index0] | 0, num1hi[index1] | 0) | 0;
     val1 += val & mask;
     val2 = val >>> 16;
-    val = Math.imul(num2lo[1] | 0, num1hi[0] | 0) | 0;
+    val = Math.imul(num2lo[index1] | 0, num1hi[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[2] | 0, num1lo[3] | 0) | 0;
+    val = Math.imul(num2lo[index2] | 0, num1lo[index3] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2lo[3] | 0, num1lo[2] | 0) | 0;
+    val = Math.imul(num2lo[index3] | 0, num1lo[index2] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2hi[0] | 0, num1lo[1] | 0) | 0;
+    val = Math.imul(num2hi[index0] | 0, num1lo[index1] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
-    val = Math.imul(num2hi[1] | 0, num1lo[0] | 0) | 0;
+    val = Math.imul(num2hi[index1] | 0, num1lo[index0] | 0) | 0;
     val1 += val & mask;
     val2 += val >>> 16;
     const result5: number = val1 & mask;
     val1 = (val2 + (val1 >>> 16)) | 0;
 
     // leftmost, due to modulo, just let the product overflow
-    val = (num1hi[3] << 16) | num1hi[2];
-    val1 += Math.imul(num2lo[0] | 0, val | 0) | 0;
-    val = (num1hi[2] << 16) | num1hi[1];
-    val1 += Math.imul(num2lo[1] | 0, val | 0) | 0;
-    val = (num1hi[1] << 16) | num1hi[0];
-    val1 += Math.imul(num2lo[2] | 0, val | 0) | 0;
-    val = (num1hi[0] << 16) | num1lo[3];
-    val1 += Math.imul(num2lo[3] | 0, val | 0) | 0;
+    val = this.high64.values[1]; // (num1hi[index3] << 16) | num1hi[index2];
+    val1 += Math.imul(num2lo[index0] | 0, val | 0) | 0;
+    val = (num1hi[index2] << 16) | num1hi[index1];
+    val1 += Math.imul(num2lo[index1] | 0, val | 0) | 0;
+    val = this.high64.values[0]; // (num1hi[index1] << 16) | num1hi[index0];
+    val1 += Math.imul(num2lo[index2] | 0, val | 0) | 0;
+    val = (num1hi[index0] << 16) | num1lo[index3];
+    val1 += Math.imul(num2lo[index3] | 0, val | 0) | 0;
     // part 2
-    val = (num1lo[3] << 16) | num1lo[2];
-    val1 += Math.imul(num2hi[0] | 0, val | 0) | 0;
-    val = (num1lo[2] << 16) | num1lo[1];
-    val1 += Math.imul(num2hi[1] | 0, val | 0) | 0;
-    val = (num1lo[1] << 16) | num1lo[0];
-    val1 += Math.imul(num2hi[2] | 0, val | 0) | 0;
+    val = this.low64.values[1]; // (num1lo[index3] << 16) | num1lo[index2];
+    val1 += Math.imul(num2hi[index0] | 0, val | 0) | 0;
+    val = (num1lo[index2] << 16) | num1lo[index1];
+    val1 += Math.imul(num2hi[index1] | 0, val | 0) | 0;
+    val = this.low64.values[0]; // (num1lo[index1] << 16) | num1lo[index0];
+    val1 += Math.imul(num2hi[index2] | 0, val | 0) | 0;
     // save result
     const result6: number = val1 & mask;
     val1 >>>= 16;
 
     // final one, special
-    val1 += Math.imul(num2hi[3] | 0, num1lo[0] | 0);
+    val1 += Math.imul(num2hi[index3] | 0, num1lo[index0] | 0);
 
     // fill in the in place results
-    num1lo[0] = result0 | 0;
-    num1lo[1] = result1 | 0;
-    num1lo[2] = result2 | 0;
-    num1lo[3] = result3 | 0;
-    num1hi[0] = result4 | 0;
-    num1hi[1] = result5 | 0;
-    num1hi[2] = result6 | 0;
-    num1hi[3] = val1 & mask;
+    num1lo[index0] = result0 | 0;
+    num1lo[index1] = result1 | 0;
+    num1lo[index2] = result2 | 0;
+    num1lo[index3] = result3 | 0;
+    num1hi[index0] = result4 | 0;
+    num1hi[index1] = result5 | 0;
+    num1hi[index2] = result6 | 0;
+    num1hi[index3] = val1 & mask;
   }
 
   /**
@@ -625,47 +696,47 @@ class Uint128 {
    * @returns - nothing; object's state/value is updated.
    */
   inplaceModAdd128(int2: Uint128): void {
-    const num1lo: Int32Array = this.low64.values;
-    const num1hi: Int32Array = this.high64.values;
-    const num2lo: Int32Array = int2.low64.values;
-    const num2hi: Int32Array = int2.high64.values;
+    const num1lo: Uint16Array = this.low64.values16;
+    const num1hi: Uint16Array = this.high64.values16;
+    const num2lo: Uint16Array = int2.low64.values16;
+    const num2hi: Uint16Array = int2.high64.values16;
 
     const mask: number = 0xffff | 0;
 
-    let val: number = num1lo[0] + num2lo[0];
-    num1lo[0] = val & mask;
+    let val: number = num1lo[index0] + num2lo[index0];
+    num1lo[index0] = val & mask;
 
     val >>>= 16;
-    val += num1lo[1] + num2lo[1];
-    num1lo[1] = val & mask;
+    val += num1lo[index1] + num2lo[index1];
+    num1lo[index1] = val & mask;
 
     val >>>= 16;
-    val += num1lo[2] + num2lo[2];
-    num1lo[2] = val & mask;
+    val += num1lo[index2] + num2lo[index2];
+    num1lo[index2] = val & mask;
 
     val >>>= 16;
-    val += num1lo[3] + num2lo[3];
-    num1lo[3] = val & mask;
+    val += num1lo[index3] + num2lo[index3];
+    num1lo[index3] = val & mask;
 
     val >>>= 16;
-    val += num1hi[0] + num2hi[0];
-    num1hi[0] = val & mask;
+    val += num1hi[index0] + num2hi[index0];
+    num1hi[index0] = val & mask;
 
     val >>>= 16;
-    val += num1hi[1] + num2hi[1];
-    num1hi[1] = val & mask;
+    val += num1hi[index1] + num2hi[index1];
+    num1hi[index1] = val & mask;
 
     val >>>= 16;
-    val += num1hi[2] + num2hi[2];
-    num1hi[2] = val & mask;
+    val += num1hi[index2] + num2hi[index2];
+    num1hi[index2] = val & mask;
 
     val >>>= 16;
-    val += num1hi[3] + num2hi[3];
-    num1hi[3] = val & mask;
+    val += num1hi[index3] + num2hi[index3];
+    num1hi[index3] = val & mask;
   }
 
   /**
-   * Left shifts the value of this object by 8 bits,
+   * Left shifts the value of this object by 1 bit,
    * then sets the rightmost bit to 1.
    * @returns - nothing; object's state/value is updated.
    */
@@ -673,24 +744,13 @@ class Uint128 {
     const numLo: Int32Array = this.low64.values;
     const numHi: Int32Array = this.high64.values;
 
-    const mask: number = 0xffff | 0;
-    const cutOff: number = 0x7fff | 0;
+    const carryLo0: number = numLo[0] < 0 ? 1 | 0 : 0 | 0;
+    const carryLo1: number = numLo[1] < 0 ? 1 | 0 : 0 | 0;
+    const carryHi0: number = numHi[0] < 0 ? 1 | 0 : 0 | 0;
 
-    const carryLo0: number = numLo[0] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryLo1: number = numLo[1] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryLo2: number = numLo[2] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryLo3: number = numLo[3] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryHi0: number = numHi[0] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryHi1: number = numHi[1] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-    const carryHi2: number = numHi[2] > (cutOff | 0) ? 1 | 0 : 0 | 0;
-
-    numLo[0] = ((numLo[0] << 1) & mask) | 1;
-    numLo[1] = ((numLo[1] << 1) & mask) | carryLo0;
-    numLo[2] = ((numLo[2] << 1) & mask) | carryLo1;
-    numLo[3] = ((numLo[3] << 1) & mask) | carryLo2;
-    numHi[0] = ((numHi[0] << 1) & mask) | carryLo3;
-    numHi[1] = ((numHi[1] << 1) & mask) | carryHi0;
-    numHi[2] = ((numHi[2] << 1) & mask) | carryHi1;
-    numHi[3] = ((numHi[3] << 1) & mask) | carryHi2;
+    numLo[0] = (numLo[0] << 1) | 1;
+    numLo[1] = (numLo[1] << 1) | carryLo0;
+    numHi[0] = (numHi[0] << 1) | carryLo1;
+    numHi[1] = (numHi[1] << 1) | carryHi0;
   }
 }

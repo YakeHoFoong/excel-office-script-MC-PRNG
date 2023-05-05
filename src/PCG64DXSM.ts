@@ -19,11 +19,10 @@ export { PCG64DXSM };
 
 // top-level code, set up the constants
 const PCG_CHEAP_MULTIPLIER_128: Uint64 = new Uint64();
-PCG_CHEAP_MULTIPLIER_128.values.set([0x58b5, 0xe4dd, 0x2042, 0xda94]);
+PCG_CHEAP_MULTIPLIER_128.from32bits(0xe4dd58b5, 0xda942042);
 
 const PCG_DEFAULT_MULTIPLIER: Uint128 = new Uint128();
-PCG_DEFAULT_MULTIPLIER.low64.values.set([0xf645, 0x9fcc, 0xdf64, 0x4385]);
-PCG_DEFAULT_MULTIPLIER.high64.values.set([0x5da4, 0x1fc6, 0xed05, 0x2360]);
+PCG_DEFAULT_MULTIPLIER.from32bits(0x9fccf645, 0x4385df64, 0x1fc65da4, 0x2360ed05);
 
 /**
  * This class corresponds to the same BitGenerator in Numpy.
@@ -48,11 +47,9 @@ class PCG64DXSM implements IRandomBitsGenerator {
 
     // initialize the state
     const initstate: Uint128 = new Uint128();
-    initstate.low64.from32bits(seedsFromSS32[2], seedsFromSS32[3]);
-    initstate.high64.from32bits(seedsFromSS32[0], seedsFromSS32[1]);
+    initstate.from32bits(seedsFromSS32[2], seedsFromSS32[3], seedsFromSS32[0], seedsFromSS32[1]);
 
-    this.inc.low64.from32bits(seedsFromSS32[6], seedsFromSS32[7]);
-    this.inc.high64.from32bits(seedsFromSS32[4], seedsFromSS32[5]);
+    this.inc.from32bits(seedsFromSS32[6], seedsFromSS32[7], seedsFromSS32[4], seedsFromSS32[5]);
 
     this.inc.inplaceMod128LeftShift1or1();
     this.step_default();

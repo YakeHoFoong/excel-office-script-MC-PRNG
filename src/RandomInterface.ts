@@ -15,7 +15,6 @@ export { IRandomBitsGenerator };
  * so that a RandomDistributions object can call the bit generator.
  */
 interface IRandomBitsGenerator {
-
   /**
    * This method should generate 64-bits of random value.
    * The result is passed by via the parameter, for speed.

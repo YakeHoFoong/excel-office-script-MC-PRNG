@@ -26,6 +26,7 @@
     "test:no-tsc": "mocha -r ts-node/register test/**/*.spec.ts -n loader=ts-node/esm",
     "test:unit": "tsc && mocha test/**/*.spec.js",
     "validate": "office-addin-manifest validate manifest.xml",
+    "validate:dist": "office-addin-manifest validate ./dist/manifest.xml",
     "watch": "webpack --mode development --watch"
   },
   "dependencies": {

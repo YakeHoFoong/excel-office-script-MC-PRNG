@@ -428,7 +428,7 @@ const kiUint64: Uint64[] = [];
 
 for (let i = 0; i < 256; i++) {
   const x: Uint64 = new Uint64();
-  x.values.set(kiRaw[i]);
+  x.values16.set(kiRaw[i]);
   kiUint64.push(x);
 }
 

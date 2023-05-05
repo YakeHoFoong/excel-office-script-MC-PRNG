@@ -143,4 +143,133 @@ describe("Long 128-bit and 64-bit integer maths", function (): void {
       done();
     });
   });
+
+  describe("In place 64-bit rotate left verify using bigint", function (): void {
+    it("In place 64-bit rotate left 45 Test 1", function (done): void {
+      const testNum = 0x890f8f345afead45n;
+      const expectedResult = (testNum << 45n) % 0x10000000000000000n | (testNum >> (64n - 45n));
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum);
+      calculatedResult.inplace64RotateLeft(45);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+    it("In place 64-bit rotate left 23 Test 1", function (done): void {
+      const testNum = 0x890f8f345afead45n;
+      const expectedResult = (testNum << 23n) % 0x10000000000000000n | (testNum >> (64n - 23n));
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum);
+      calculatedResult.inplace64RotateLeft(23);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+  });
+
+  describe("In place 64-bit shift left verify using bigint", function (): void {
+    it("In place 64-bit shift left 17 Test 1", function (done): void {
+      const testNum = 0x890f8f345afead45n;
+      const expectedResult = (testNum << 17n) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum);
+      calculatedResult.inplace64LeftShift(17);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+  });
+
+  describe("In place 64-bit modulo add verify using bigint", function (): void {
+    it("In place 64-bit modulo add Test 1", function (done): void {
+      const testNum1 = 0x890f8f345afead45n;
+      const testNum2 = 0x3abe3246790f8ad4n;
+      const expectedResult = (testNum1 + testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplace64ModAdd(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+    it("In place 64-bit modulo add Test 2", function (done): void {
+      const testNum1 = 0x890f8f34ffffffffn;
+      const testNum2 = 0x3abe324600000001n;
+      const expectedResult = (testNum1 + testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplace64ModAdd(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+    it("In place 64-bit modulo add Test 3", function (done): void {
+      const testNum1 = 0x890f8f3400000001n;
+      const testNum2 = 0x3abe3246ffffffffn;
+      const expectedResult = (testNum1 + testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplace64ModAdd(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+    it("In place 64-bit modulo add Test 4", function (done): void {
+      const testNum1 = 0x890f8f3400000001n;
+      const testNum2 = 0x3abe324600000001n;
+      const expectedResult = (testNum1 + testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplace64ModAdd(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+    it("In place 64-bit modulo add Test 5", function (done): void {
+      const testNum1 = 0x890f8f34ffffffffn;
+      const testNum2 = 0x3abe3246ffffffffn;
+      const expectedResult = (testNum1 + testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplace64ModAdd(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+  });
+
+  describe("In place 64-bit Xor with verify using bigint", function (): void {
+    it("In place 64-bit Xor with 45 Test 1", function (done): void {
+      const testNum1 = 0x890f8f345afead45n;
+      const testNum2 = 0x3abe3246790f8ad4n;
+      const expectedResult = (testNum1 ^ testNum2) % 0x10000000000000000n;
+      // result is returned in the parameter
+      const calculatedResult: Uint64 = new Uint64();
+      const num2: Uint64 = new Uint64();
+      calculatedResult.fromBigint(testNum1);
+      num2.fromBigint(testNum2);
+      calculatedResult.inplaceXorWith(num2);
+      const actualResult: bigint = calculatedResult.toBigInt();
+      expect(actualResult).to.equal(expectedResult);
+      done();
+    });
+  });
 });
