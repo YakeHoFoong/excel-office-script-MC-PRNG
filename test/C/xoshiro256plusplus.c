@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: Written in 2019 by David Blackman and Sebastiano Vigna <vigna@acm.org> */
+/* SPDX-License-Identifier: CC0-1.0 */
+
 /*  Written in 2019 by David Blackman and Sebastiano Vigna (vigna@acm.org)
 
 To the extent possible under law, the author has dedicated all copyright
