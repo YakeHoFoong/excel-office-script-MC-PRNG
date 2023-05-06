@@ -4,9 +4,9 @@
 import { SeedSequence32 } from "../SeedSequence32.js";
 
 import { PCG64DXSM } from "../PCG64DXSM.js";
+import { Xoshiro256PlusPlus } from "../Xoshiro256PlusPlus.js";
 
 import { BitGeneratorType, JobResult, JobSpec, RandomDistribution } from "./functions-worker.js";
-import { Xoshiro256PlusPlus } from "../Xoshiro256PlusPlus.js";
 
 // eslint-disable-next-line no-undef
 const g_numLogicalCores: number = window.navigator.hardwareConcurrency;
