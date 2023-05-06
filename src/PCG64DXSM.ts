@@ -29,7 +29,7 @@ PCG_DEFAULT_MULTIPLIER.from32bits(0x9fccf645, 0x4385df64, 0x1fc65da4, 0x2360ed05
  * @see [distributions.c in Numpy](https://github.com/numpy/numpy/blob/main/numpy/random/src/distributions/distributions.c)
  */
 class PCG64DXSM implements IRandomBitsGenerator {
-  static readonly SEED_SEQ_NUM_WORDS = 8;
+  static readonly SEED_SEQ_NUM_WORDS = 8; // 8 x 32 = 256 bits internal state
   private readonly state: Uint128;
   private readonly inc: Uint128;
   private readonly lo: Uint64; // scratch value

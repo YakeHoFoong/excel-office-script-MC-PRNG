@@ -5,7 +5,8 @@ import { SeedSequence32 } from "../SeedSequence32.js";
 
 import { PCG64DXSM } from "../PCG64DXSM.js";
 
-import { JobResult, JobSpec, RandomDistribution } from "./functions-worker.js";
+import { BitGeneratorType, JobResult, JobSpec, RandomDistribution } from "./functions-worker.js";
+import { Xoshiro256PlusPlus } from "../Xoshiro256PlusPlus.js";
 
 // eslint-disable-next-line no-undef
 const g_numLogicalCores: number = window.navigator.hardwareConcurrency;
@@ -61,10 +62,10 @@ function getOrCreateWebWorker(streamNumber: number): Worker {
 const g_mapPreCalc: Map<string, SimBatchInfo> = new Map<string, SimBatchInfo>();
 
 class SimBatchInfo {
-  readonly fnSimNumToSeq: (a: number) => SeedSequence32;
+  readonly fnSimNumToSeedState: (a: number) => Int32Array;
   readonly mapSimNumToSimInfo: Map<number, SimInfo>;
-  constructor(fnSimNumToSeq: (a: number) => SeedSequence32) {
-    this.fnSimNumToSeq = fnSimNumToSeq;
+  constructor(fnSimNumToSeedState: (a: number) => Int32Array) {
+    this.fnSimNumToSeedState = fnSimNumToSeedState;
     this.mapSimNumToSimInfo = new Map();
   }
 }
@@ -86,7 +87,7 @@ interface CalcPromise {
 }
 
 /**
- * @customfunction RANDOM.UNIT.UNIFORM
+ * @customfunction RANDOM.UNIT.UNIFORM.Xoshiro256PlusPlus
  * @cancelable
  * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
  * @param seed - Seed for the random number generator
@@ -98,7 +99,7 @@ interface CalcPromise {
  * @returns A promise that resolves to a 2D array of numbers with the requested random numbers or rejected with an error message string.
  * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
  */
-export async function randomUnitUniform(
+export async function randomUnitUniformXoshiro256PlusPlus(
   seed: number,
   streamNumber: number,
   numStreams: number,
@@ -107,6 +108,7 @@ export async function randomUnitUniform(
   invocation: CustomFunctions.CancelableInvocation
 ): Promise<number[][]> {
   return randomNumber(
+    BitGeneratorType.Xoshiro256PlusPlus,
     RandomDistribution.UnitUniform,
     seed,
     streamNumber,
@@ -118,7 +120,7 @@ export async function randomUnitUniform(
 }
 
 /**
- * @customfunction RANDOM.STANDARD.NORMAL
+ * @customfunction RANDOM.STANDARD.NORMAL.Xoshiro256PlusPlus
  * @cancelable
  * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
  * @param seed - Seed for the random number generator
@@ -130,7 +132,7 @@ export async function randomUnitUniform(
  * @returns A promise that resolves to a 2D array of numbers with the requested random numbers or rejected with an error message string.
  * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
  */
-export async function randomStandardNormal(
+export async function randomStandardNormalXoshiro256PlusPlus(
   seed: number,
   streamNumber: number,
   numStreams: number,
@@ -139,6 +141,7 @@ export async function randomStandardNormal(
   invocation: CustomFunctions.CancelableInvocation
 ): Promise<number[][]> {
   return randomNumber(
+    BitGeneratorType.Xoshiro256PlusPlus,
     RandomDistribution.StandardNormal,
     seed,
     streamNumber,
@@ -150,6 +153,73 @@ export async function randomStandardNormal(
 }
 
 /**
+ * @customfunction RANDOM.UNIT.UNIFORM.PCG64DXSM
+ * @cancelable
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
+ * @param seed - Seed for the random number generator
+ * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
+ * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
+ * @param numRows - Number of rows of output
+ * @param numColumns - Number of columns of output
+ * @param invocation - Custom function handler
+ * @returns A promise that resolves to a 2D array of numbers with the requested random numbers or rejected with an error message string.
+ * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
+ */
+export async function randomUnitUniformPCG64DXSM(
+  seed: number,
+  streamNumber: number,
+  numStreams: number,
+  numRows: number,
+  numColumns: number,
+  invocation: CustomFunctions.CancelableInvocation
+): Promise<number[][]> {
+  return randomNumber(
+    BitGeneratorType.PCG64DXSM,
+    RandomDistribution.UnitUniform,
+    seed,
+    streamNumber,
+    numStreams,
+    numRows,
+    numColumns,
+    invocation
+  );
+}
+
+/**
+ * @customfunction RANDOM.STANDARD.NORMAL.PCG64DXSM
+ * @cancelable
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
+ * @param seed - Seed for the random number generator
+ * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
+ * @param numStreams - The total number of streams, usually the total number of stochastic simulations/scenarios/paths
+ * @param numRows - Number of rows of output
+ * @param numColumns - Number of columns of output
+ * @param invocation - Custom function handler
+ * @returns A promise that resolves to a 2D array of numbers with the requested random numbers or rejected with an error message string.
+ * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
+ */
+export async function randomStandardNormalPCG64DXSM(
+  seed: number,
+  streamNumber: number,
+  numStreams: number,
+  numRows: number,
+  numColumns: number,
+  invocation: CustomFunctions.CancelableInvocation
+): Promise<number[][]> {
+  return randomNumber(
+    BitGeneratorType.PCG64DXSM,
+    RandomDistribution.StandardNormal,
+    seed,
+    streamNumber,
+    numStreams,
+    numRows,
+    numColumns,
+    invocation
+  );
+}
+
+/**
+ * @param bitGenType - The PRNG type, currently only PCG64DXSM and Xoshiro256++ available
  * @param distribution - The random distribution type, currently only Standard Normal and Unit Uniform available
  * @param seed - Seed for the random number generator
  * @param streamNumber - The stream number of current function call, usually the stochastic simulation/scenario/path of the current Excel TABLE loop
@@ -161,6 +231,7 @@ export async function randomStandardNormal(
  * *** CAUTION !!! The return type must be Promise<T> and T must not be a union type, otherwise the function will just hang. ***
  */
 async function randomNumber(
+  bitGenType: BitGeneratorType,
   distribution: RandomDistribution,
   seed: number,
   streamNumber: number,
@@ -185,6 +256,7 @@ async function randomNumber(
   // now create the string keys for the 2 maps
   // we need to use strings because JavaScript does not have built-in support for tuples as keys
   const batchKey = [
+    bitGenType.toString(),
     distribution.toString(),
     entropy[0].toString(),
     entropy[1].toString(),
@@ -195,8 +267,18 @@ async function randomNumber(
 
   if (!g_mapPreCalc.has(batchKey)) {
     const seq: SeedSequence32 = new SeedSequence32({ entropy: entropy, poolSize: 4, CONFIG_TYPE: "PARENT" });
-    const fn: (a: number) => SeedSequence32 = seq.spawn(numStreams);
-    g_mapPreCalc.set(batchKey, new SimBatchInfo(fn));
+    let fn: (a: number) => SeedSequence32;
+    switch (bitGenType) {
+      case BitGeneratorType.PCG64DXSM:
+        fn = seq.spawn(numStreams);
+        g_mapPreCalc.set(batchKey, new SimBatchInfo((a: number) => fn(a).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS)));
+        break;
+      case BitGeneratorType.Xoshiro256PlusPlus:
+        g_mapPreCalc.set(batchKey, new SimBatchInfo(Xoshiro256PlusPlus.createStreamsFunction(seq)));
+        break;
+      default:
+        throw Error("Unknown bit generator type requested.");
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -206,12 +288,13 @@ async function randomNumber(
   function addSimCalc(sNum: number, prom?: CalcPromise): void {
     const worker: Worker = getOrCreateWebWorker(sNum);
     const jobSpec: JobSpec = {
+      bitGenType: bitGenType,
       distribution: distribution,
       batchKey: batchKey,
       streamNumber: sNum,
       numRows: numRows,
       numColumns: numColumns,
-      seqSeeds: batchInfo.fnSimNumToSeq(sNum).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS),
+      initialState: batchInfo.fnSimNumToSeedState(sNum),
     };
     const simInfo: SimInfo = new SimInfo();
     batchInfo.mapSimNumToSimInfo.set(sNum, simInfo);

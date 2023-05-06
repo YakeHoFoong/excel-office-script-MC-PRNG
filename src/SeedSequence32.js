@@ -165,7 +165,7 @@ class SeedSequence32 {
         if (!Number.isInteger(nChildren) || nChildren < 1)
             throw Error("SeedSequence32 spawn method must be called with a whole number.");
         nChildren |= 0;
-        const seqs = Array(nChildren);
+        const seqs = Array(nChildren); // memoization using closure
         const nChildrenSpawned = this.nChildrenSpawned;
         this.nChildrenSpawned += nChildren | 0;
         return (index) => {
