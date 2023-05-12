@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
+// Expected values are from the Python file
 
 import { SeedSequence32 } from "../src/SeedSequence32.js";
 

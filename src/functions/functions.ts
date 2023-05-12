@@ -7,6 +7,7 @@ import { PCG64DXSM } from "../PCG64DXSM.js";
 import { Xoshiro256PlusPlus } from "../Xoshiro256PlusPlus.js";
 
 import { BitGeneratorType, JobResult, JobSpec, RandomDistribution } from "./functions-worker.js";
+import { showMessageInTaskpane } from "../taskpane/taskpane.js";
 
 // eslint-disable-next-line no-undef
 const g_numLogicalCores: number = window.navigator.hardwareConcurrency;
@@ -382,4 +383,17 @@ export async function memoize(
     if (results === undefined) throw Error("MEMOIZE called to get numbers before storing numbers.");
     else return results;
   }
+}
+
+/**
+ * @customfunction TASKPANE.MESSAGE
+ * @helpurl https://www.phattailed.com/Monte-Carlo-excel-add-in/help.html
+ * @returns A promise containing the message
+ * @param message - The message to show on the task pane
+ * @param invocation - Custom function handler
+ * @requiresAddress
+ */
+export async function taskpaneMessage(message: string, invocation: CustomFunctions.Invocation): Promise<string> {
+  showMessageInTaskpane(invocation.address as string, message);
+  return message;
 }

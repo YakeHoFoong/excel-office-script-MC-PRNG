@@ -12,3 +12,5 @@ src/**/*.js.map
 test/**/*.js
 test/**/*.js.map
 test/Python/.idea/
+test/C/.idea/
+test/C/cmake-build-debug/

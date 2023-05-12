@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: © 2023 Yake Ho Foong
 // SPDX-License-Identifier: MIT
-// Expected values are from the Python file
+// Expected values are from the C file
 
 import { SeedSequence32 } from "../src/SeedSequence32.js";
 
 import { Uint64 } from "../src/LongIntMaths.js";
 
-import { PCG64DXSM } from "../src/PCG64DXSM.js";
+import { Xoshiro256PlusPlus } from "../src/Xoshiro256PlusPlus.js";
 
 import { assert } from "chai";
 import { describe, it } from "mocha";
 
-describe("PCG64 DXSM Pseudorandom Number Generator - Raw Random", function (): void {
+describe("Xoshiro256++ Pseudorandom Number Generator - Raw Random", function (): void {
   describe("No spawning children and generate raw", function (): void {
     it("No spawning children and generate raw Test 1", function (done): void {
       const TEST_ENTROPY: Int32Array = new Int32Array([0xb76a074c, 0x23c70376, 0x7710e1d7, 0x56f73ae9]);
@@ -20,15 +20,17 @@ describe("PCG64 DXSM Pseudorandom Number Generator - Raw Random", function (): v
         poolSize: 4,
         CONFIG_TYPE: "PARENT",
       });
-      const myPCG64: PCG64DXSM = new PCG64DXSM(mySeedSequence.generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS));
+      const myXoshi: Xoshiro256PlusPlus = new Xoshiro256PlusPlus(
+        mySeedSequence.generateState(Xoshiro256PlusPlus.SEED_SEQ_NUM_WORDS)
+      );
 
       const num1: Uint64 = new Uint64();
       const num2: Uint64 = new Uint64();
-      myPCG64.nextUint64(num1);
-      myPCG64.nextUint64(num2);
+      myXoshi.nextUint64(num1);
+      myXoshi.nextUint64(num2);
 
       const actualResults: bigint[] = [num1.toBigInt(), num2.toBigInt()];
-      const expectedResult: bigint[] = [0xa8e29346fd7e8508n, 0x392b540515735b49n];
+      const expectedResult: bigint[] = [0xf18ed5e91ba47a44n, 0xd78c4a632a6cca27n];
 
       assert.deepEqual(actualResults, expectedResult);
       done();
@@ -43,16 +45,17 @@ describe("PCG64 DXSM Pseudorandom Number Generator - Raw Random", function (): v
         poolSize: 4,
         CONFIG_TYPE: "PARENT",
       });
-      const seqs = mySeedSequence.spawn(3);
+      const fn: (a: number) => Int32Array = Xoshiro256PlusPlus.createStreamsFunction(mySeedSequence);
 
       const actualResults: bigint[][] = [];
       for (let c = 0; c < 3; c++) {
-        const myPCG64: PCG64DXSM = new PCG64DXSM(seqs(c).generateState(PCG64DXSM.SEED_SEQ_NUM_WORDS));
+        const states: Int32Array = fn(c);
+        const myXoshi: Xoshiro256PlusPlus = new Xoshiro256PlusPlus(states);
 
         const num1: Uint64 = new Uint64();
         const num2: Uint64 = new Uint64();
-        myPCG64.nextUint64(num1);
-        myPCG64.nextUint64(num2);
+        myXoshi.nextUint64(num1);
+        myXoshi.nextUint64(num2);
 
         const actualResult: bigint[] = [num1.toBigInt(), num2.toBigInt()];
 
@@ -60,9 +63,9 @@ describe("PCG64 DXSM Pseudorandom Number Generator - Raw Random", function (): v
       }
 
       const expectedResult: bigint[][] = [
-        [0x43a8befedb067be3n, 0x4bcb74296228d8een],
-        [0xa6a9d55a97b3df9en, 0x48bb3e952dfe8088n],
-        [0x246c3affb89e944n, 0xe94461a8a3b4445bn],
+        [0xf18ed5e91ba47a44n, 0xd78c4a632a6cca27n],
+        [0xdd34a392717b1eeen, 0x8a303c0430aeea1n],
+        [0x8898d64a0e85e9fbn, 0x24c3050d62415ca7n],
       ];
       assert.deepEqual(actualResults, expectedResult);
       done();

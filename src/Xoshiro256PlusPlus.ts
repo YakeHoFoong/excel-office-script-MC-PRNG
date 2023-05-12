@@ -22,10 +22,10 @@ JUMP[0] = new Uint64();
 JUMP[1] = new Uint64();
 JUMP[2] = new Uint64();
 JUMP[3] = new Uint64();
-JUMP[0].from32bits(0x180ec6d3, 0x3cfd0aba);
-JUMP[1].from32bits(0xd5a61266, 0xf0c9392c);
-JUMP[2].from32bits(0xa9582618, 0xe03fc9aa);
-JUMP[3].from32bits(0x39abdc45, 0x29b1661c);
+JUMP[0].from32bits(0x3cfd0aba, 0x180ec6d3);
+JUMP[1].from32bits(0xf0c9392c, 0xd5a61266);
+JUMP[2].from32bits(0xe03fc9aa, 0xa9582618);
+JUMP[3].from32bits(0x29b1661c, 0x39abdc45);
 
 /**
  * This class corresponds to the same BitGenerator in Numpy.
@@ -144,7 +144,7 @@ class Xoshiro256PlusPlus implements IRandomBitsGenerator {
         s3.from32bits(0, 0);
 
         for (let i = 0; i < 4; i++) {
-          for (let b = 0; b < 64; b++) {
+          for (let b = 1; b <= 64; b++) {
             if (JUMP[i].isBitNfromRightSet(b)) {
               s0.inplaceXorWith(myObj.state[0]);
               s1.inplaceXorWith(myObj.state[1]);

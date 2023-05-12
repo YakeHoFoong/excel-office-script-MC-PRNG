@@ -37,3 +37,18 @@ export async function run() {
     console.error(error);
   }
 }
+
+export async function showMessageInTaskpane(address: string, message: string) {
+  const list = document.getElementById("custom-messages");
+  if (list) {
+    const bullet = document.getElementById(address);
+    if (!bullet) {
+      const li = document.createElement("li");
+      li.setAttribute("id", address);
+      //li.appendChild(document.createTextNode("Four"));
+      li.innerHTML = message;
+      list.appendChild(li);
+    } else bullet.innerHTML = message;
+    //x.innerText = message;
+  } else throw Error("Task pane is corrupted, missing HTML element UL of ID custom-messages");
+}
