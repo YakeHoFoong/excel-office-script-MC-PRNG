@@ -7,20 +7,20 @@ import { PCG64DXSM } from "../PCG64DXSM.js";
 import { IRandomBitsGenerator } from "../RandomInterface.js";
 import { Xoshiro256PlusPlus } from "../Xoshiro256PlusPlus.js";
 
-export { JobSpec, JobResult, RandomDistribution, BitGeneratorType };
+export { JobSpec, JobResult, RandomDistributionEnum, BitGeneratorEnum };
 
-const enum BitGeneratorType {
+const enum BitGeneratorEnum {
   PCG64DXSM,
   Xoshiro256PlusPlus,
 }
 
-const enum RandomDistribution {
+const enum RandomDistributionEnum {
   StandardNormal,
   UnitUniform,
 }
 
 interface JobResult {
-  batchKey: string;
+  streamSetKey: string;
   streamNumber: number;
   numRows: number;
   numColumns: number;
@@ -28,12 +28,12 @@ interface JobResult {
 }
 
 interface JobSpec {
-  bitGenType: BitGeneratorType;
-  distribution: RandomDistribution;
+  bitGenType: BitGeneratorEnum;
+  distribution: RandomDistributionEnum;
   batchKey: string;
-  streamNumber: number;
   numRows: number;
   numColumns: number;
+  streamNumber: number;
   initialState: Int32Array;
 }
 
@@ -42,10 +42,10 @@ self.addEventListener("message", function (event) {
   const jobSpec: JobSpec = event.data;
   let bitGen: IRandomBitsGenerator;
   switch (jobSpec.bitGenType) {
-    case BitGeneratorType.PCG64DXSM:
+    case BitGeneratorEnum.PCG64DXSM:
       bitGen = new PCG64DXSM(jobSpec.initialState);
       break;
-    case BitGeneratorType.Xoshiro256PlusPlus:
+    case BitGeneratorEnum.Xoshiro256PlusPlus:
       bitGen = new Xoshiro256PlusPlus(jobSpec.initialState);
       break;
     default:
@@ -55,17 +55,17 @@ self.addEventListener("message", function (event) {
   const numElements = jobSpec.numRows * jobSpec.numColumns;
   const floatArr = new Float64Array(numElements);
   switch (jobSpec.distribution) {
-    case RandomDistribution.StandardNormal:
+    case RandomDistributionEnum.StandardNormal:
       for (let i = 0; i < numElements; i++) floatArr[i] = randDist.randomStandardNormal();
       break;
-    case RandomDistribution.UnitUniform:
+    case RandomDistributionEnum.UnitUniform:
       for (let i = 0; i < numElements; i++) floatArr[i] = randDist.randomUnit();
       break;
     default:
       throw Error("Unknown random distribution type requested from worker.");
   }
   const message: JobResult = {
-    batchKey: jobSpec.batchKey,
+    streamSetKey: jobSpec.batchKey,
     streamNumber: jobSpec.streamNumber,
     numRows: jobSpec.numRows,
     numColumns: jobSpec.numColumns,
