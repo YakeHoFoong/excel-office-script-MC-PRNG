@@ -38,17 +38,56 @@ export async function run() {
   }
 }
 
-export async function showMessageInTaskpane(address: string, message: string) {
-  const list = document.getElementById("custom-messages");
-  if (list) {
-    const bullet = document.getElementById(address);
-    if (!bullet) {
-      const li = document.createElement("li");
-      li.setAttribute("id", address);
-      //li.appendChild(document.createTextNode("Four"));
-      li.innerHTML = message;
-      list.appendChild(li);
-    } else bullet.innerHTML = message;
-    //x.innerText = message;
-  } else throw Error("Task pane is corrupted, missing HTML element UL of ID custom-messages");
+/**
+ * @param s - The string to be encoded.
+ * @returns A string encoding of the parameter, and is a valid HTML ID value.
+ */
+function encodeStr(s: string): string {
+  let result = "P";
+  for (const c of s) result += c.codePointAt(0)?.toString(16);
+  return result;
+}
+
+/**
+ * @param address - The address of the cell containing the formula, as a unique ID.
+ * @param currentValue - The current value of progress, a whole number between one and maxValue.
+ * @param maxValue - The largest value allowed for the progress or currentValue.
+ * @param labelText - The label about the progress bar to show on the task pane.
+ * @returns A Promise of None. The task pane will be updated.
+ */
+export async function showProgressInTaskpane(
+  address: string,
+  currentValue: number,
+  maxValue: number,
+  labelText: string
+) {
+  const barsDiv = document.getElementById("progress-bars");
+  // the ID refers to a LABEL element with a PROGRESS child, see
+  // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/progress
+  const labelID = encodeStr(address);
+  if (barsDiv) {
+    const existingLabel = document.getElementById(labelID);
+    // if already finished, remove progress
+    if (currentValue >= maxValue) {
+      if (existingLabel) existingLabel.remove();
+      return;
+    }
+    // put the progress bar inside the label
+    const progressBar = existingLabel ? existingLabel.firstElementChild : document.createElement("progress");
+    if (!progressBar || progressBar.nodeName !== "PROGRESS")
+      throw Error(
+        "Task pane is corrupted, missing PROGRESS element as first child inside LABEL element with ID  of " + labelID
+      );
+    progressBar.setAttribute("max", maxValue.toString());
+    progressBar.setAttribute("value", currentValue.toString());
+
+    if (existingLabel) existingLabel.innerText = labelText;
+    else {
+      const newLabel = document.createElement("label");
+      newLabel.setAttribute("id", labelID);
+      newLabel.innerText = labelText;
+      barsDiv.appendChild(newLabel); // put the label inside the DIV
+      newLabel.appendChild(progressBar); // put the progress bar inside the label
+    }
+  } else throw Error("Task pane is corrupted, missing HTML element DIV of ID 'progress-bars'");
 }
